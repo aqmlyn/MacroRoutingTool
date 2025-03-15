@@ -1,0 +1,105 @@
+ldc.i4.0 
+stloc.0 
+ldarg.0 
+ldfld Microsoft.Xna.Framework.Vector2 Monocle.Entity::Position
+ldarg.0 
+ldfld Microsoft.Xna.Framework.Vector2 Celeste.TextMenu::Justify
+ldarg.0 
+callvirt System.Single Celeste.TextMenu::get_Width()
+ldarg.0 
+callvirt System.Single Celeste.TextMenu::get_Height()
+newobj System.Void Microsoft.Xna.Framework.Vector2::.ctor(System.Single,System.Single)
+call Microsoft.Xna.Framework.Vector2 Microsoft.Xna.Framework.Vector2::op_Multiply(Microsoft.Xna.Framework.Vector2,Microsoft.Xna.Framework.Vector2)
+call Microsoft.Xna.Framework.Vector2 Microsoft.Xna.Framework.Vector2::op_Subtraction(Microsoft.Xna.Framework.Vector2,Microsoft.Xna.Framework.Vector2)
+stloc.1 
+ldarg.0 
+ldfld System.Collections.Generic.List`1<Celeste.TextMenu/Item> Celeste.TextMenu::items
+callvirt System.Collections.Generic.List`1/Enumerator<T> System.Collections.Generic.List`1<Celeste.TextMenu/Item>::GetEnumerator()
+stloc.2 
+br MonoMod.Cil.ILLabel
+ldloca.s V_2
+call T System.Collections.Generic.List`1/Enumerator<Celeste.TextMenu/Item>::get_Current()
+stloc.3 
+ldloc.3 
+ldfld System.Boolean Celeste.TextMenu/Item::Visible
+brfalse MonoMod.Cil.ILLabel
+ldloc.3 
+callvirt System.Single Celeste.TextMenu/Item::Height()
+stloc.s V_4
+ldarg.1 
+ldloc.3 
+ldfld System.Boolean Celeste.TextMenu/Item::AboveAll
+bne.un MonoMod.Cil.ILLabel
+ldloc.1 
+ldc.r4 0
+ldloc.s V_4
+ldc.r4 0.5
+mul 
+ldloc.3 
+ldfld Monocle.Wiggler Celeste.TextMenu/Item::SelectWiggler
+callvirt System.Single Monocle.Wiggler::get_Value()
+ldc.r4 8
+mul 
+add 
+newobj System.Void Microsoft.Xna.Framework.Vector2::.ctor(System.Single,System.Single)
+call Microsoft.Xna.Framework.Vector2 Microsoft.Xna.Framework.Vector2::op_Addition(Microsoft.Xna.Framework.Vector2,Microsoft.Xna.Framework.Vector2)
+stloc.s V_5
+ldloc.3 
+castclass Celeste.TextMenu/Item
+callvirt System.Boolean Celeste.TextMenu/Item::get_AlwaysRender()
+brtrue.s MonoMod.Cil.ILLabel
+ldloc.s V_5
+ldfld System.Single Microsoft.Xna.Framework.Vector2::Y
+ldloc.s V_4
+ldc.r4 0.5
+mul 
+add 
+ldc.r4 0
+ble.un.s MonoMod.Cil.ILLabel
+ldloc.s V_5
+ldfld System.Single Microsoft.Xna.Framework.Vector2::Y
+ldloc.s V_4
+ldc.r4 0.5
+mul 
+sub 
+call System.Int32 Monocle.Engine::get_Height()
+conv.r4 
+bge.un.s MonoMod.Cil.ILLabel
+ldloc.3 
+ldloc.s V_5
+ldarg.0 
+ldfld System.Boolean Celeste.TextMenu::Focused
+brtrue.s MonoMod.Cil.ILLabel
+ldarg.0 
+ldfld System.Boolean Celeste.TextMenu::RenderAsFocused
+brfalse.s MonoMod.Cil.ILLabel
+ldarg.0 
+callvirt Celeste.TextMenu/Item Celeste.TextMenu::get_Current()
+ldloc.3 
+ceq 
+br.s MonoMod.Cil.ILLabel
+ldc.i4.0 
+callvirt System.Void Celeste.TextMenu/Item::Render(Microsoft.Xna.Framework.Vector2,System.Boolean)
+br.s MonoMod.Cil.ILLabel
+ldc.i4.1 
+stloc.0 
+ldloca.s V_1
+ldflda System.Single Microsoft.Xna.Framework.Vector2::Y
+dup 
+ldind.r4 
+ldloc.s V_4
+ldarg.0 
+ldfld System.Single Celeste.TextMenu::ItemSpacing
+add 
+add 
+stind.r4 
+ldloca.s V_2
+call System.Boolean System.Collections.Generic.List`1/Enumerator<Celeste.TextMenu/Item>::MoveNext()
+brtrue MonoMod.Cil.ILLabel
+leave.s MonoMod.Cil.ILLabel
+ldloca.s V_2
+constrained. System.Collections.Generic.List`1/Enumerator<Celeste.TextMenu/Item>
+callvirt System.Void System.IDisposable::Dispose()
+endfinally 
+ldloc.0 
+ret 

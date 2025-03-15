@@ -1,0 +1,12 @@
+C:\Program Files (x86)\Steam\SteamApps\common\Celeste\Mods\MacroRoutingTool\Source\bin\Debug\net7.0\MacroRoutingTool.deps.json
+C:\Program Files (x86)\Steam\SteamApps\common\Celeste\Mods\MacroRoutingTool\Source\bin\Debug\net7.0\MacroRoutingTool.dll
+C:\Program Files (x86)\Steam\SteamApps\common\Celeste\Mods\MacroRoutingTool\Source\bin\Debug\net7.0\MacroRoutingTool.pdb
+C:\Program Files (x86)\Steam\SteamApps\common\Celeste\Mods\MacroRoutingTool\Source\obj\Debug\net7.0\MacroRoutingTool.csproj.AssemblyReference.cache
+C:\Program Files (x86)\Steam\SteamApps\common\Celeste\Mods\MacroRoutingTool\Source\obj\Debug\net7.0\MacroRoutingTool.GeneratedMSBuildEditorConfig.editorconfig
+C:\Program Files (x86)\Steam\SteamApps\common\Celeste\Mods\MacroRoutingTool\Source\obj\Debug\net7.0\MacroRoutingTool.AssemblyInfoInputs.cache
+C:\Program Files (x86)\Steam\SteamApps\common\Celeste\Mods\MacroRoutingTool\Source\obj\Debug\net7.0\MacroRoutingTool.AssemblyInfo.cs
+C:\Program Files (x86)\Steam\SteamApps\common\Celeste\Mods\MacroRoutingTool\Source\obj\Debug\net7.0\MacroRoutingTool.csproj.CoreCompileInputs.cache
+C:\Program Files (x86)\Steam\SteamApps\common\Celeste\Mods\MacroRoutingTool\Source\obj\Debug\net7.0\MacroRoutingTool.dll
+C:\Program Files (x86)\Steam\SteamApps\common\Celeste\Mods\MacroRoutingTool\Source\obj\Debug\net7.0\refint\MacroRoutingTool.dll
+C:\Program Files (x86)\Steam\SteamApps\common\Celeste\Mods\MacroRoutingTool\Source\obj\Debug\net7.0\MacroRoutingTool.pdb
+C:\Program Files (x86)\Steam\SteamApps\common\Celeste\Mods\MacroRoutingTool\Source\obj\Debug\net7.0\ref\MacroRoutingTool.dll

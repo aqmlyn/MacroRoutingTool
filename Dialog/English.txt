@@ -1,0 +1,127 @@
+# NOTES:
+# The # Symbol at the start of a line counts as a Comment. To include in dialog, use a \#
+# The . Symbol will cause a pause unless escaped with \. (ex: Mr. Oshiro has a pause, Mr\. Oshiro does not)
+# Newlines automatically create a Page Break, unless there is an {n} command on the previous line
+# Commands: Anything inside of curly braces {...} is a command and should not be translated.
+
+# Inline Text Commands:
+# {~}wavy text{/~}
+# {!}impact text{/!}
+# {>> x}changes speed at which characters are displayed{>>}
+# {# 000000}this text is black{#} (uses HEX color values)
+# {+MENU_BEGIN} inserts the dialog from the MENU_BEGIN value (in English, "CLIMB")
+# {n} creates a newline, without a page break
+# {0.5} creates a 0.5 second pause
+# {big}this text is large{/big}
+
+# Gameplay Control Commands (should never change)
+# {trigger x} this triggers an in-game event
+# {anchor} controls the visual position of the textbox in-game
+
+macroroutingtool_settingstitle=Macro Routing Tool
+macroroutingtool_debugmap_title=MACROROUTING TOOL
+
+# Mod settings
+macroroutingtool_settings_path=Path
+
+# Graph viewer controls
+macroroutingtool_viewercontrols_menulabel=Focus Menu
+macroroutingtool_viewercontrols_exitmenulabel=Exit Menu
+macroroutingtool_viewercontrols_modelabel=Mode:
+macroroutingtool_viewermode_disabled=Disabled
+macroroutingtool_viewermode_editing=Editing
+macroroutingtool_viewermode_routing=Routing
+
+# Generic item controls
+macroroutingtool_genlist_namelabel=Name
+macroroutingtool_genlist_rename=Rename
+macroroutingtool_genlist_delete=Delete
+macroroutingtool_genlist_createnew=Create New
+macroroutingtool_genlist_reorder=Reorder
+
+# Generic options
+macroroutingtool_genopt_na=N/A
+
+# GRAPH INFO
+macroroutingtool_graphmenu_header=GRAPH INFO
+macroroutingtool_graphmenu_choose=Choose another graph...
+#(name label uses genlist_namelabel)
+macroroutingtool_graphmenu_editing_weights=Edit Weights
+macroroutingtool_graphmenu_editing_addpt=Add Point
+macroroutingtool_graphmenu_editing_addconn=Add Connection
+
+# ROUTE INFO
+macroroutingtool_routemenu_header=ROUTE INFO
+#(name label uses genlist_namelabel)
+macroroutingtool_routemenu_choose=Choose another route...
+macroroutingtool_routemenu_complete=Complete
+macroroutingtool_routemenu_possible=Possible
+macroroutingtool_routemenu_weightsheader=WEIGHTS
+macroroutingtool_routemenu_varsheader=VARIABLES
+
+# SELECTION INFO
+macroroutingtool_graphsel_header=SELECTION
+macroroutingtool_graphsel_empty=No selection
+macroroutingtool_graphsel_points={0} points
+macroroutingtool_graphsel_conns={0} connections
+
+# Selected anything
+#(name label uses genlist_namelabel)
+macroroutingtool_graphsel_weights=Weights
+macroroutingtool_graphsel_requires=Requirements
+macroroutingtool_graphsel_results=Results
+#(delete uses genlist_delete)
+
+# Selected point(s)
+macroroutingtool_graphsel_ptid=ID
+macroroutingtool_graphsel_ptx=X
+macroroutingtool_graphsel_pty=Y
+macroroutingtool_graphsel_ptimage=Image
+macroroutingtool_graphsel_ptend=Default End
+macroroutingtool_graphsel_ptend_start=Start
+macroroutingtool_graphsel_ptend_finish=Finish
+macroroutingtool_graphsel_ptfasttravel=Fast Travel
+macroroutingtool_graphsel_ptfasttravel_checkpoint=Checkpoint
+
+# Selected connection(s)
+macroroutingtool_graphsel_connfrom=From
+macroroutingtool_graphsel_connto=To
+
+# Graph/route chooser
+macroroutingtool_chooser_assignedheader=ASSIGNED
+macroroutingtool_chooser_assignedsubheader=to {0}
+macroroutingtool_chooser_unassignedheader=UNASSIGNED
+#(Create New uses genlist_createnew)
+macroroutingtool_chooser_choose=Open
+#(Rename uses genlist_rename)
+macroroutingtool_chooser_unassign=Unassign
+#(Delete uses genlist_delete)
+
+# Weight editor
+#(Rename uses genlist_rename)
+#(Reorder uses genlist_reorder)
+macroroutingtool_weighteditor_format=Format
+#(Delete uses genlist_delete)
+
+# Weight formats
+macroroutingtool_weightformat_int=Integer
+macroroutingtool_weightformat_float=Number
+macroroutingtool_weightformat_time=Time
+
+# Requirement editor
+macroroutingtool_reqviewer_all=All
+macroroutingtool_reqviewer_any=Any
+macroroutingtool_reqeditor_grouptype=Type
+macroroutingtool_reqeditor_edit=Edit
+macroroutingtool_reqeditor_changegroup=Change Group
+#(Create New uses genlist_createnew)
+#(Delete uses genlist_delete)
+
+# Result editor
+macroroutingtool_reseditor_firstvisit=First Visit Only
+macroroutingtool_reseditor_eachvisit=Each Visit
+#TODO results that only get applied if an expression is true
+macroroutingtool_reseditor_var=Edit Variable
+macroroutingtool_reseditor_value=Edit Value
+#(Reorder uses genlist_reorder)
+#(Delete uses genlist_delete)

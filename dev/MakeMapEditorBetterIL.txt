@@ -1,0 +1,186 @@
+ldsfld Monocle.VirtualButton Celeste.Input::ESC
+callvirt System.Boolean Monocle.VirtualButton::get_Pressed()
+brtrue.s MonoMod.Cil.ILLabel
+ldsfld Monocle.VirtualButton Celeste.Input::MenuCancel
+callvirt System.Boolean Monocle.VirtualButton::get_Pressed()
+brfalse.s MonoMod.Cil.ILLabel
+ldarg.0 
+ldfld Celeste.Session Celeste.Editor.MapEditor::CurrentSession
+brfalse.s MonoMod.Cil.ILLabel
+ldsfld Monocle.VirtualButton Celeste.Input::ESC
+callvirt System.Void Monocle.VirtualButton::ConsumePress()
+ldsfld Monocle.VirtualButton Celeste.Input::MenuCancel
+callvirt System.Void Monocle.VirtualButton::ConsumePress()
+ldarg.0 
+ldfld Celeste.Session Celeste.Editor.MapEditor::CurrentSession
+ldloca.s V_1
+initobj System.Nullable`1<Microsoft.Xna.Framework.Vector2>
+ldloc.1 
+newobj System.Void Celeste.LevelLoader::.ctor(Celeste.Session,System.Nullable`1<Microsoft.Xna.Framework.Vector2>)
+call System.Void Monocle.Engine::set_Scene(Monocle.Scene)
+ldsfld Monocle.VirtualButton Celeste.Input::MenuConfirm
+callvirt System.Boolean Monocle.VirtualButton::get_Pressed()
+brfalse.s MonoMod.Cil.ILLabel
+ldsfld Monocle.VirtualButton Celeste.Input::MenuConfirm
+callvirt System.Void Monocle.VirtualButton::ConsumePress()
+ldarg.0 
+ldarg.0 
+ldfld Microsoft.Xna.Framework.Vector2 Celeste.Editor.MapEditor::mousePosition
+callvirt Celeste.Editor.LevelTemplate Celeste.Editor.MapEditor::TestCheck(Microsoft.Xna.Framework.Vector2)
+stloc.2 
+ldloc.2 
+brfalse.s MonoMod.Cil.ILLabel
+ldloc.2 
+ldfld Celeste.Editor.LevelTemplateType Celeste.Editor.LevelTemplate::Type
+ldc.i4.1 
+bne.un.s MonoMod.Cil.ILLabel
+ret 
+ldarg.0 
+ldloc.2 
+ldarg.0 
+ldfld Microsoft.Xna.Framework.Vector2 Celeste.Editor.MapEditor::mousePosition
+ldc.r4 8
+call Microsoft.Xna.Framework.Vector2 Microsoft.Xna.Framework.Vector2::op_Multiply(Microsoft.Xna.Framework.Vector2,System.Single)
+callvirt System.Void Celeste.Editor.MapEditor::LoadLevel(Celeste.Editor.LevelTemplate,Microsoft.Xna.Framework.Vector2)
+ldsfld Monocle.Camera Celeste.Editor.MapEditor::Camera
+brfalse MonoMod.Cil.ILLabel
+ldsfld Monocle.VirtualIntegerAxis Celeste.Input::MoveX
+ldfld System.Int32 Monocle.VirtualIntegerAxis::Value
+conv.r4 
+ldsfld Monocle.VirtualIntegerAxis Celeste.Input::MoveY
+ldfld System.Int32 Monocle.VirtualIntegerAxis::Value
+conv.r4 
+newobj System.Void Microsoft.Xna.Framework.Vector2::.ctor(System.Single,System.Single)
+ldc.r4 300
+call Microsoft.Xna.Framework.Vector2 Microsoft.Xna.Framework.Vector2::op_Multiply(Microsoft.Xna.Framework.Vector2,System.Single)
+call System.Single Monocle.Engine::get_DeltaTime()
+call Microsoft.Xna.Framework.Vector2 Microsoft.Xna.Framework.Vector2::op_Multiply(Microsoft.Xna.Framework.Vector2,System.Single)
+stloc.3 
+ldsfld Monocle.Camera Celeste.Editor.MapEditor::Camera
+dup 
+callvirt Microsoft.Xna.Framework.Vector2 Monocle.Camera::get_Position()
+ldloc.3 
+call Microsoft.Xna.Framework.Vector2 Microsoft.Xna.Framework.Vector2::op_Subtraction(Microsoft.Xna.Framework.Vector2,Microsoft.Xna.Framework.Vector2)
+callvirt System.Void Monocle.Camera::set_Position(Microsoft.Xna.Framework.Vector2)
+ldsfld Monocle.VirtualIntegerAxis Celeste.Input::MoveX
+ldfld System.Boolean Monocle.VirtualIntegerAxis::Inverted
+brtrue.s MonoMod.Cil.ILLabel
+ldc.i4.1 
+br.s MonoMod.Cil.ILLabel
+ldc.i4.m1 
+stloc.s V_4
+ldsfld Monocle.VirtualIntegerAxis Celeste.Input::MoveY
+ldfld System.Boolean Monocle.VirtualIntegerAxis::Inverted
+brtrue.s MonoMod.Cil.ILLabel
+ldc.i4.1 
+br.s MonoMod.Cil.ILLabel
+ldc.i4.m1 
+stloc.s V_5
+ldloca.s V_6
+ldloc.3 
+ldfld System.Single Microsoft.Xna.Framework.Vector2::X
+ldloc.s V_4
+conv.r4 
+mul 
+ldloc.3 
+ldfld System.Single Microsoft.Xna.Framework.Vector2::Y
+ldloc.s V_5
+conv.r4 
+mul 
+call System.Void Microsoft.Xna.Framework.Vector2::.ctor(System.Single,System.Single)
+ldsfld Monocle.Camera Celeste.Editor.MapEditor::Camera
+callvirt System.Single Monocle.Camera::get_Zoom()
+ldc.r4 6
+bge.un.s MonoMod.Cil.ILLabel
+ldsfld Monocle.Camera Celeste.Editor.MapEditor::Camera
+dup 
+callvirt Microsoft.Xna.Framework.Vector2 Monocle.Camera::get_Position()
+ldloc.s V_6
+ldc.r8 1.3
+ldc.r4 6
+ldsfld Monocle.Camera Celeste.Editor.MapEditor::Camera
+callvirt System.Single Monocle.Camera::get_Zoom()
+sub 
+conv.r8 
+call System.Double System.Math::Pow(System.Double,System.Double)
+conv.r4 
+call Microsoft.Xna.Framework.Vector2 Microsoft.Xna.Framework.Vector2::op_Multiply(Microsoft.Xna.Framework.Vector2,System.Single)
+call Microsoft.Xna.Framework.Vector2 Microsoft.Xna.Framework.Vector2::op_Addition(Microsoft.Xna.Framework.Vector2,Microsoft.Xna.Framework.Vector2)
+callvirt System.Void Monocle.Camera::set_Position(Microsoft.Xna.Framework.Vector2)
+br.s MonoMod.Cil.ILLabel
+ldsfld Monocle.Camera Celeste.Editor.MapEditor::Camera
+dup 
+callvirt Microsoft.Xna.Framework.Vector2 Monocle.Camera::get_Position()
+ldloc.s V_6
+call Microsoft.Xna.Framework.Vector2 Microsoft.Xna.Framework.Vector2::op_Addition(Microsoft.Xna.Framework.Vector2,Microsoft.Xna.Framework.Vector2)
+callvirt System.Void Monocle.Camera::set_Position(Microsoft.Xna.Framework.Vector2)
+call Monocle.MInput/GamePadData[] Monocle.MInput::get_GamePads()
+call System.Int32 Celeste.Input::get_Gamepad()
+ldelem.ref 
+ldfld Microsoft.Xna.Framework.Input.GamePadState Monocle.MInput/GamePadData::CurrentState
+stloc.0 
+ldarg.0 
+ldfld System.Int32 Celeste.Editor.MapEditor::zoomWaitFrames
+ldc.i4.0 
+bgt MonoMod.Cil.ILLabel
+ldsfld Monocle.Camera Celeste.Editor.MapEditor::Camera
+brfalse MonoMod.Cil.ILLabel
+ldc.r4 0
+stloc.s V_7
+ldloca.s V_0
+call Microsoft.Xna.Framework.Input.GamePadThumbSticks Microsoft.Xna.Framework.Input.GamePadState::get_ThumbSticks()
+stloc.s V_8
+ldloca.s V_8
+call Microsoft.Xna.Framework.Vector2 Microsoft.Xna.Framework.Input.GamePadThumbSticks::get_Right()
+ldfld System.Single Microsoft.Xna.Framework.Vector2::X
+call System.Single System.Math::Abs(System.Single)
+ldc.r4 0.5
+blt.un.s MonoMod.Cil.ILLabel
+ldsfld Monocle.Camera Celeste.Editor.MapEditor::Camera
+callvirt System.Single Monocle.Camera::get_Zoom()
+ldloca.s V_0
+call Microsoft.Xna.Framework.Input.GamePadThumbSticks Microsoft.Xna.Framework.Input.GamePadState::get_ThumbSticks()
+stloc.s V_8
+ldloca.s V_8
+call Microsoft.Xna.Framework.Vector2 Microsoft.Xna.Framework.Input.GamePadThumbSticks::get_Right()
+ldfld System.Single Microsoft.Xna.Framework.Vector2::X
+call System.Int32 System.Math::Sign(System.Single)
+conv.r4 
+ldc.r4 1
+mul 
+add 
+stloc.s V_7
+br.s MonoMod.Cil.ILLabel
+ldloca.s V_0
+call Microsoft.Xna.Framework.Input.GamePadThumbSticks Microsoft.Xna.Framework.Input.GamePadState::get_ThumbSticks()
+stloc.s V_8
+ldloca.s V_8
+call Microsoft.Xna.Framework.Vector2 Microsoft.Xna.Framework.Input.GamePadThumbSticks::get_Right()
+ldfld System.Single Microsoft.Xna.Framework.Vector2::Y
+call System.Single System.Math::Abs(System.Single)
+ldc.r4 0.5
+blt.un.s MonoMod.Cil.ILLabel
+ldsfld Monocle.Camera Celeste.Editor.MapEditor::Camera
+callvirt System.Single Monocle.Camera::get_Zoom()
+ldloca.s V_0
+call Microsoft.Xna.Framework.Input.GamePadThumbSticks Microsoft.Xna.Framework.Input.GamePadState::get_ThumbSticks()
+stloc.s V_8
+ldloca.s V_8
+call Microsoft.Xna.Framework.Vector2 Microsoft.Xna.Framework.Input.GamePadThumbSticks::get_Right()
+ldfld System.Single Microsoft.Xna.Framework.Vector2::Y
+call System.Int32 System.Math::Sign(System.Single)
+conv.r4 
+ldc.r4 1
+mul 
+add 
+stloc.s V_7
+ldloc.s V_7
+ldc.r4 1
+blt.un.s MonoMod.Cil.ILLabel
+ldsfld Monocle.Camera Celeste.Editor.MapEditor::Camera
+ldloc.s V_7
+callvirt System.Void Monocle.Camera::set_Zoom(System.Single)
+ldarg.0 
+ldsfld System.Int32 Celeste.Editor.MapEditor::ZoomIntervalFrames
+stfld System.Int32 Celeste.Editor.MapEditor::zoomWaitFrames
+ret 
