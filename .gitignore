@@ -3,6 +3,7 @@ MacroRoutingTool.zip
 
 # Build results (default location for DLL that Everest loads)
 bin/
+Source/obj/
 
 # GitHub Desktop
 .git/
