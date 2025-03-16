@@ -77,14 +77,20 @@ public static class DebugMapTweaks {
     public static float HoverTextBorderThickness = 2f;
     public static float HoverBackOpacity = 0.6f;
     
-    public static Dictionary<string, TextMenuUtils.TextElement> HoverText = new(){
+    public class HoverTextItem {
+        public TextMenuUtils.TextElement Element = new();
+        public GetterEventProperty<string> Text = new();
+    }
+    public static Dictionary<string, HoverTextItem> HoverText = new(){
         {HoverIDs.RoomName, new(){
-            Color = Color.Red
+            Element = new(){Color = Color.Red}
         }},
         {HoverIDs.CheckpointName, new() {
-            Color = Color.Lime
+            Element = new(){Color = Color.Lime}
         }}
     };
+
+    public static GetterEventProperty<bool> HoverTextEnabled = new(){Value = true};
 
     /// <summary>
     /// Needed to draw a rectangle with the correct position and dimensions in high-res UIs.
@@ -97,8 +103,12 @@ public static class DebugMapTweaks {
     }
 
     public static void DrawHoverText(MapEditor debugMap, Camera camera) {
-        IEnumerable<TextMenuUtils.TextElement> visibleTexts = HoverText.Values.Where(elem => elem.Text != "");
-        int visibleCount = visibleTexts.Count();
+        List<TextMenuUtils.TextElement> visibleTexts = [];
+        foreach (HoverTextItem item in HoverText.Values) {
+            item.Element.Text = item.Text.Value;
+            if (item.Element.Text != "") {visibleTexts.Add(item.Element);}
+        }
+        int visibleCount = visibleTexts.Count;
         if (visibleCount == 0) {return;}
         Vector2 mousePos = (Vector2)MousePos.GetValue(debugMap);
         Vector2 drawPos = new(
@@ -138,19 +148,19 @@ public static class DebugMapTweaks {
                 //if hovered room is first room, show start "checkpoint" name (TODO i think some helpers let u rename it, want to support that later)
                 if (firstRoom == hoveredName) {
                     hoveredCheckpoint = MRTDialog.Get("overworld_start");
-                    HoverText[HoverIDs.CheckpointName].Color = Color.Aqua;
+                    HoverText[HoverIDs.CheckpointName].Element.Color = Color.Aqua;
                 }
                 //if hovered room is a checkpoint, show that checkpoint's name
                 CheckpointData checkpoint = checkpoints.FirstOrDefault(cp => cp.Level == hoveredName, null);
                 if (checkpoint != null) {
                     hoveredCheckpoint = MRTDialog.Get(checkpoint.Name);
-                    HoverText[HoverIDs.CheckpointName].Color = Color.Lime;
+                    HoverText[HoverIDs.CheckpointName].Element.Color = Color.Lime;
                 }
                 break;
             }
         }
-        HoverText[HoverIDs.RoomName].Text = hoveredName;
-        HoverText[HoverIDs.CheckpointName].Text = hoveredCheckpoint;
+        HoverText[HoverIDs.RoomName].Text.Value = hoveredName;
+        HoverText[HoverIDs.CheckpointName].Text.Value = hoveredCheckpoint;
     }
   #endregion
 

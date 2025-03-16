@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.Reflection;
 using Celeste.Editor;
 using Microsoft.Xna.Framework;
@@ -53,6 +55,11 @@ public static partial class DebugMapHooks {
       #endregion
     }
 
+    public class MapOrigUpdateILMouseModeCheck {
+        public ILLabel LabelAfterEnd = null;
+        public Instruction FirstInstruction = null;
+    }
+
     /// <summary>
     /// Modify the IL of the debug map's original <c>Update</c> method. Current modifications are:
     /// <list type="bullet">
@@ -63,6 +70,7 @@ public static partial class DebugMapHooks {
     public static void EnableIL_MapOrigUpdate(ILContext ilctx) {
         ILCursor ilcur = new(ilctx);
 
+      #region directional pan speed
         //assumptions:
         //the first call to the camera's position setter after the first call to the mousewheel delta's getter is where the camera gets panned by directional input
         //the last two loads of a VirtualIntegerAxis.Value before the position setter are the base values to move the camera by
@@ -71,12 +79,64 @@ public static partial class DebugMapHooks {
         ilcur.GotoNext(MoveType.After, instr => instr.MatchCallOrCallvirt(typeof(MInput.MouseData).GetMethod("get_" + nameof(MInput.MouseData.WheelDelta))));
         ilcur.GotoNext(MoveType.Before, instr => instr.MatchCallOrCallvirt(typeof(Camera).GetMethod("set_" + nameof(Camera.Position))));
         ilcur.GotoPrev(MoveType.Before, instr => instr.MatchCallOrCallvirt(typeof(Vector2).GetMethod("op_Addition", [typeof(Vector2), typeof(Vector2)])));
-      #region directional pan speed
+
         //...and multiply it by a value with an event attached
         //TODO this should probably just replace the vector, not specifically multiply it by a float
         ilcur.EmitLdsfld(typeof(DebugMapHooks).GetField(nameof(DirectionalPanSpeedMult)));
         ilcur.EmitCall(typeof(GetterEventProperty<float>).GetMethod("get_" + nameof(GetterEventProperty<float>.Value)));
         ilcur.EmitCall(typeof(Vector2).GetMethod("op_Multiply", [typeof(Vector2), typeof(float)]));
+      #endregion
+
+      #region disable room controls
+        //assumptions:
+        // - the first instance of setting the value of mouseDragStart is inside the MouseModes.Hover block (all the other mouse modes are for dragging)
+        // - before that, the last instance of checking the mouse mode is the start of the MouseModes.Hover block (if that wasn't true, it'd mean someone is checking the mouse mode when they already know it)
+
+        FieldInfo enabledField = typeof(DebugMapHooks).GetField(nameof(RoomControlsEnabled));
+        MethodInfo getEnabledValue = typeof(GetterEventProperty<bool>).GetMethod("get_" + nameof(GetterEventProperty<bool>.Value));
+
+        FieldInfo mouseModeField = typeof(MapEditor).GetField(nameof(MapEditor.mouseMode), BindingFlags.NonPublic | BindingFlags.Instance);
+
+        ilcur.GotoNext(MoveType.Before, instr => instr.MatchStfld(typeof(MapEditor).GetField(nameof(MapEditor.mouseDragStart), BindingFlags.NonPublic | BindingFlags.Instance)));
+        Instruction setMouseDragStart = ilcur.Next;
+        ilcur.GotoPrev(MoveType.After, instr => instr.MatchLdfld(mouseModeField));
+
+        //store the start and end of the block for each mouse mode
+        Dictionary<MapEditor.MouseModes, MapOrigUpdateILMouseModeCheck> mouseModeBlocks = [];
+        int modeInt = 0;
+        //TODO do all compilations have this optimization for mode 0? in case one doesn't, maybe i could limit the range for this brtrue search to be between ldfld mouseModeField and setMouseDragStart?
+        mouseModeBlocks.Add(MapEditor.MouseModes.Hover, new());
+        ilcur.GotoNext(MoveType.After, instr => instr.MatchBrtrue(out mouseModeBlocks[0].LabelAfterEnd));
+        mouseModeBlocks[0].FirstInstruction = ilcur.Next;
+        ilcur.GotoLabel(mouseModeBlocks[0].LabelAfterEnd, MoveType.After);
+        while (++modeInt < Enum.GetValues(typeof(MapEditor.MouseModes)).Length && ilcur.TryGotoNext(MoveType.After, instr => instr.MatchLdfld(mouseModeField))) {
+            MapEditor.MouseModes mode = (MapEditor.MouseModes)modeInt;
+            mouseModeBlocks.Add(mode, new());
+            ilcur.GotoNext(MoveType.After, instr => instr.MatchBneUn(out mouseModeBlocks[mode].LabelAfterEnd));
+            mouseModeBlocks[mode].FirstInstruction = ilcur.Next;
+            ilcur.GotoLabel(mouseModeBlocks[mode].LabelAfterEnd, MoveType.After);
+        }
+
+        //hover mode:
+        ilcur.Goto(mouseModeBlocks[MapEditor.MouseModes.Hover].FirstInstruction, MoveType.Before);
+        //disable selecting rooms
+        ilcur.GotoNext(MoveType.After, instr => instr.MatchLdloc2());
+        ilcur.GotoNext(MoveType.After, instr => instr.MatchBrtrue(out _) || instr.MatchBrfalse(out _));
+        ilcur.EmitLdsfld(enabledField);
+        ilcur.EmitCall(getEnabledValue);
+        ilcur.EmitBrfalse(mouseModeBlocks[MapEditor.MouseModes.Hover].LabelAfterEnd);
+      #endregion
+
+      #region input events
+        //assumptions:
+        //
+
+        ilcur.Index = ilctx.Instrs.Count;
+        ilcur.GotoPrev(MoveType.Before, instr => instr.MatchCall(typeof(Scene).GetMethod(nameof(Scene.Update))));
+        ilcur.GotoPrev(MoveType.Before, instr => instr.MatchLdarg0());
+
+        ilcur.EmitLdarg0();
+        ilcur.EmitDelegate(CallInputEvents);
       #endregion
     }
 

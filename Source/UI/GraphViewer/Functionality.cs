@@ -89,11 +89,13 @@ public static partial class GraphViewer {
         SwapMenu(ModeInitialMenu);
         DebugMapHooks.OnRenderBetweenRoomsAndCursor += RenderGraph;
         DebugMapHooks.Update += Update;
+        DebugMapHooks.RoomControlsEnabled.Event += DisableRoomControlsWhenViewerEnabled;
     }
 
     public static void Unload() {
         DebugMapHooks.OnRenderBetweenRoomsAndCursor -= RenderGraph;
         DebugMapHooks.Update -= Update;
+        DebugMapHooks.RoomControlsEnabled.Event -= DisableRoomControlsWhenViewerEnabled;
     }
 
     public static void Update(Editor.MapEditor debugMap) {
@@ -107,4 +109,6 @@ public static partial class GraphViewer {
             CurrentMenu.Focused = !CurrentMenu.Focused;
         }
     }
+
+    public static void DisableRoomControlsWhenViewerEnabled(ref bool val) {val &= Mode == (int)Modes.Disabled;}
 }

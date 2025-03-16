@@ -12,6 +12,8 @@ public static partial class DebugMapHooks {
     }
     public static GetterEventProperty<bool, DebugRoomArgs> DebugRenderRoomAsHovered = new();
 
+    public static GetterEventProperty<bool> RoomControlsEnabled = new(){Event = (ref bool val) => val = true};
+
     public static float DirectionalPanBaseMult = 1f;
     /// <summary>
     /// The speed at which the camera moves when directional inputs are held will be multiplied by this value.
