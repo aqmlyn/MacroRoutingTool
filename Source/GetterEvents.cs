@@ -1,3 +1,5 @@
+using System.Diagnostics;
+
 namespace Celeste.Mod.MacroRoutingTool;
 
 /// <summary>
@@ -76,7 +78,7 @@ public class GetterEventProperty<TValue, TArgs> : GetterEventProperty<TValue> {
     /// <summary>
     /// The arguments that the event will receive when called.
     /// </summary>
-    public TArgs Arguments = (TArgs)typeof(TArgs).GetConstructor([]).Invoke(null);
+    public TArgs Arguments = default;
 
     protected override ref TValue GetValue() {
         if (getting || Event == null) {

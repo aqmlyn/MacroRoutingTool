@@ -10,9 +10,51 @@ public static partial class DebugMapHooks {
         public LevelTemplate Room;
         public MapEditor DebugMap;
     }
+    /// <summary>
+    /// Decides whether a given room should be rendered as if the cursor was hovering over it.
+    /// </summary>
     public static GetterEventProperty<bool, DebugRoomArgs> DebugRenderRoomAsHovered = new();
 
-    public static GetterEventProperty<bool> RoomControlsEnabled = new(){Event = (ref bool val) => val = true};
+    /// <summary>
+    /// Decides whether the debug map's room-related controls are enabled.
+    /// </summary>
+    public static GetterEventProperty<bool, MapEditor> RoomControlsEnabled = new(){Event = (ref bool val, MapEditor debugMap) => val = true};
+    /// <summary>
+    /// Decides whether ctrl+click is to be interpreted as toggling whether each item under the cursor is selected, and makes necessary preparations if so.
+    /// </summary>
+    public static GetterEventProperty<bool, MapEditor> ToggleSelectionPoint = new(){Event = (ref bool val, MapEditor debugMap) => val = false};
+    /// <summary>
+    /// Decides whether a click without holding ctrl is to be interpreted as replacing the selected item list
+    /// with the items under the cursor, and makes necessary preparations if so.
+    /// </summary>
+    public static GetterEventProperty<bool, MapEditor> ReplaceSelectionPoint = new(){Event = (ref bool val, MapEditor debugMap) => val = false};
+    /// <summary>
+    /// Decides whether starting to hold left mouse is to be interpreted as starting to resize selected items, and makes necessary preparations if so.<br/>
+    /// If <see cref="ReplaceSelectionPoint"/> also returns true this frame, that will occur in addition to this. 
+    /// </summary>
+    public static GetterEventProperty<bool, MapEditor> StartResize = new(){Event = (ref bool val, MapEditor debugMap) => val = false};
+    /// <summary>
+    /// Decides whether starting to hold left mouse is to be interpreted as starting to move selected items, and makes necessary preparations if so.<br/>
+    /// If <see cref="ReplaceSelectionPoint"/> also returns true this frame, that will occur in addition to this.<br/>
+    /// If <see cref="StartResize"/> also returns true this frame, that will occur instead of this.
+    /// </summary>
+    public static GetterEventProperty<bool, MapEditor> StartMove = new(){Event = (ref bool val, MapEditor debugMap) => val = false};
+    /// <summary>
+    /// Called when releasing left click in <see cref="MapEditor.MouseModes.Select"/>.
+    /// </summary>
+    public static Action<MapEditor> ReplaceSelectionRect = debugMap => {};
+    /// <summary>
+    /// Called when releasing left click in <see cref="MapEditor.MouseModes.Select"/> while holding ctrl. 
+    /// </summary>
+    public static Action<MapEditor> ToggleSelectionRect = debugMap => {};
+    /// <summary>
+    /// Called each frame in <see cref="MapEditor.MouseModes.Move"/>. 
+    /// </summary>
+    public static Action<MapEditor> WhileMoving = debugMap => {};
+    /// <summary>
+    /// Called each frame in <see cref="MapEditor.MouseModes.Resize"/>. 
+    /// </summary>
+    public static Action<MapEditor> WhileResizing = debugMap => {};
 
     public static float DirectionalPanBaseMult = 1f;
     /// <summary>

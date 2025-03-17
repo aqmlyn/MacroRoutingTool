@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Celeste.Editor;
 using Celeste.Mod.MacroRoutingTool.Data;
 using Monocle;
 
@@ -98,7 +99,7 @@ public static partial class GraphViewer {
         DebugMapHooks.RoomControlsEnabled.Event -= DisableRoomControlsWhenViewerEnabled;
     }
 
-    public static void Update(Editor.MapEditor debugMap) {
+    public static void Update(MapEditor debugMap) {
         if (MRTModule.Settings.Bind_DebugGraphViewerMode.Pressed && ModeBindEnabled.Value) {
             Mode = (Mode + 1) % Enum.GetValues(typeof(Modes)).Length;
             SwapMenu(ModeInitialMenu);
@@ -110,5 +111,5 @@ public static partial class GraphViewer {
         }
     }
 
-    public static void DisableRoomControlsWhenViewerEnabled(ref bool val) {val &= Mode == (int)Modes.Disabled;}
+    public static void DisableRoomControlsWhenViewerEnabled(ref bool val, MapEditor debugMap) {val &= Mode == (int)Modes.Disabled;}
 }
