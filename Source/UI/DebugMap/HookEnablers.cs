@@ -187,10 +187,70 @@ public static partial class DebugMapHooks {
         ilcur.Goto(startInterpretDrag, MoveType.AfterLabel);
         emitAltHook(nameof(StartResize), emitSetMouseMode(MapEditor.MouseModes.Resize), ilcur.MarkLabel(ilcur.Next));
         //disable all right click actions (vanilla: F+rclick deletes hovered filler room, normal right click teleports to room)
-        ilcur.GotoNext(MoveType.Before, instr => instr.MatchCallvirt(typeof(MInput.MouseData).GetMethod("get_" + nameof(MInput.MouseData.PressedRightButton))));
-        ilcur.GotoPrev(MoveType.AfterLabel, instr => instr.MatchCall(typeof(MInput).GetMethod("get_" + nameof(MInput.Mouse))));
+        ilcur.GotoNext(MoveType.After, instr => instr.MatchCallvirt(typeof(MInput.MouseData).GetMethod("get_" + nameof(MInput.MouseData.PressedRightButton))));
+        ilcur.GotoNext(MoveType.After, instr => instr.MatchBrtrue(out _) || instr.MatchBrfalse(out _));
+        ilcur.MoveAfterLabels();
         emitCheckRoomControlsEnabled();
         ilcur.EmitBrfalse(afterMouseInputs);
+        //select mode:
+        ilcur.Goto(mouseModeBlocks[MapEditor.MouseModes.Select].FirstInstruction, MoveType.AfterLabel);
+        //hook every frame in select mode (vanilla: makes rooms in the selection rectangle appear hovered)
+        ilcur.GotoNext(MoveType.Before, instr => instr.MatchCallvirt(typeof(MInput.MouseData).GetMethod("get_" + nameof(MInput.MouseData.CheckLeftButton))));
+        ilcur.GotoPrev(MoveType.AfterLabel, instr => instr.MatchCall(typeof(MInput).GetMethod("get_" + nameof(MInput.Mouse))));
+        ILLabel startCheckReleaseSelect = ilcur.MarkLabel(ilcur.Next);
+        ilcur.Goto(mouseModeBlocks[MapEditor.MouseModes.Select].FirstInstruction, MoveType.AfterLabel);
+        emitCheckRoomControlsEnabled();
+        Instruction selectCheckRoomControls = ilcur.Prev;
+        ilcur.EmitLdarg0();
+        ilcur.EmitDelegate(WhileSelecting);
+        ilcur.Goto(selectCheckRoomControls, MoveType.After);
+        ilcur.EmitBrfalse(startCheckReleaseSelect);
+        //hook releasing left mouse in select mode (vanilla: either merges or replaces the selection list with the rooms in the selection rectangle)
+        ilcur.Goto(startCheckReleaseSelect.Target);
+        ilcur.GotoNext(MoveType.After, instr => instr.MatchBrtrue(out _) || instr.MatchBrfalse(out _));
+        ilcur.MoveAfterLabels();
+        emitAltHook(nameof(CommitSelectionRect), emitSetMouseMode(MapEditor.MouseModes.Hover));
+        //move mode:
+        ilcur.Goto(mouseModeBlocks[MapEditor.MouseModes.Move].FirstInstruction, MoveType.AfterLabel);
+        //hook every frame in move mode (vanilla: moves selected rooms)
+        emitCheckRoomControlsEnabled();
+        Instruction moveCheckRoomControls = ilcur.Prev;
+        ilcur.EmitLdarg0();
+        ilcur.EmitDelegate(WhileMoving);
+        Instruction callMovingHook = ilcur.Prev;
+        ilcur.GotoNext(MoveType.Before, instr => instr.MatchCallvirt(typeof(MInput.MouseData).GetMethod("get_" + nameof(MInput.MouseData.CheckLeftButton))));
+        ilcur.GotoPrev(MoveType.After, instr => instr.MatchCall(typeof(MInput).GetMethod("get_" + nameof(MInput.Mouse))));
+        ILLabel moveCheckReleased = ilcur.MarkLabel(ilcur.Prev);
+        ilcur.Goto(callMovingHook, MoveType.After);
+        ilcur.EmitBr(moveCheckReleased);
+        ILLabel origMoveCode = ilcur.MarkLabel(ilcur.Next);
+        ilcur.Goto(moveCheckRoomControls, MoveType.After);
+        ilcur.EmitBrtrue(origMoveCode);
+        //resize mode:
+        ilcur.Goto(mouseModeBlocks[MapEditor.MouseModes.Resize].FirstInstruction, MoveType.AfterLabel);
+        //hook every frame in resize mode (vanilla: resizes selected filler rooms)
+        emitCheckRoomControlsEnabled();
+        Instruction resizeCheckRoomControls = ilcur.Prev;
+        ilcur.EmitLdarg0();
+        ilcur.EmitDelegate(WhileMoving);
+        Instruction callResizingHook = ilcur.Prev;
+        ilcur.GotoNext(MoveType.Before, instr => instr.MatchCallvirt(typeof(MInput.MouseData).GetMethod("get_" + nameof(MInput.MouseData.CheckLeftButton))));
+        ilcur.GotoPrev(MoveType.After, instr => instr.MatchCall(typeof(MInput).GetMethod("get_" + nameof(MInput.Mouse))));
+        ILLabel resizeCheckReleased = ilcur.MarkLabel(ilcur.Prev);
+        ilcur.Goto(callResizingHook, MoveType.After);
+        ilcur.EmitBr(resizeCheckReleased);
+        ILLabel origResizeCode = ilcur.MarkLabel(ilcur.Next);
+        ilcur.Goto(resizeCheckRoomControls, MoveType.After);
+        ilcur.EmitBrtrue(origResizeCode);
+        //mode agnostic:
+        ilcur.Goto(afterMouseInputs.Target, MoveType.AfterLabel);
+        //disable number key hardcoded actions (vanilla: recolor selected rooms)
+        ilcur.GotoNext(MoveType.After, instr => instr.MatchLdcI4('1'));
+        ILLabel afterSetColor = null;
+        ilcur.GotoNext(MoveType.Before, instr => instr.MatchBr(out afterSetColor));
+        ilcur.Goto(afterMouseInputs.Target, MoveType.AfterLabel);
+        emitCheckRoomControlsEnabled();
+        ilcur.EmitBrfalse(afterSetColor);
       #endregion
 
       #region input events
