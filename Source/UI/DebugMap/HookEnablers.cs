@@ -119,15 +119,12 @@ public static partial class DebugMapHooks {
         }
         ILLabel afterMouseInputs = mouseModeBlocks[(MapEditor.MouseModes)mouseModeBlocks.Count - 1].LabelAfterEnd;
 
-        void emitAltHook(string evPropName, MapEditor.MouseModes mode) {
+        void emitAltHook(string evPropName, Action ifTrue, ILLabel ifFalse = null) {
+            ifFalse ??= afterMouseInputs;
             FieldInfo evProp = typeof(DebugMapHooks).GetField(evPropName);
 
             //if RoomControlsEnabled, go to the vanilla code
-            ilcur.EmitLdsfld(enabledField);
-            ilcur.EmitLdarg(0);
-            ilcur.EmitStfld(hookArgs);
-            ilcur.EmitLdsfld(enabledField);
-            ilcur.EmitCall(getControlHookValue);
+            emitCheckRoomControlsEnabled();
             //smth about the brtrue that goes here causes problems if after emitting it, more instructions are emitted before the target.
             //so need to save the position, emit the other instructions, then come back and emit this instruction
             Instruction getRoomControlsEnabled = ilcur.Prev;
@@ -137,40 +134,63 @@ public static partial class DebugMapHooks {
             ilcur.EmitStfld(hookArgs);
             ilcur.EmitLdsfld(evProp);
             ilcur.EmitCall(getControlHookValue);
-            ilcur.EmitBrfalse(afterMouseInputs);
-            //if so, change mouseMode accordingly
+            ilcur.EmitBrfalse(ifFalse);
+            //if so, emit specified instructions
+            ifTrue?.Invoke();
+            ilcur.EmitBr(ifFalse);
+            //now edit that one brtrue from earlier
+            ILLabel origCode = ilcur.MarkLabel(ilcur.Next);
+            ilcur.Goto(getRoomControlsEnabled, MoveType.After);
+            ilcur.EmitBrtrue(origCode);
+        }
+
+        Action emitSetMouseMode(MapEditor.MouseModes mode) => () => {
             ilcur.EmitLdarg0();
             ilcur.EmitLdcI4((int)mode);
             ilcur.EmitStfld(mouseModeField);
-            ilcur.EmitBr(afterMouseInputs);
-            //now edit that one brtrue from earlier
-            ILLabel origCtrlClick = ilcur.MarkLabel(ilcur.Next);
-            ilcur.Goto(getRoomControlsEnabled, MoveType.After);
-            ilcur.EmitBrtrue(origCtrlClick);
-        }
+        };
 
-        void emitDisableHook() {
+        void emitCheckRoomControlsEnabled() {
             ilcur.EmitLdsfld(enabledField);
             ilcur.EmitLdarg(0);
             ilcur.EmitStfld(hookArgs);
             ilcur.EmitLdsfld(enabledField);
             ilcur.EmitCall(getControlHookValue);
-            ilcur.EmitBrfalse(afterMouseInputs);
         }
 
         //hover mode:
         ilcur.Goto(mouseModeBlocks[MapEditor.MouseModes.Hover].FirstInstruction, MoveType.Before);
-        //hook ctrl+click (vanilla: toggles whether rooms under the cursor are selected)
+        //hook ctrl+lclick (vanilla: toggles whether rooms under the cursor are selected)
         ilcur.GotoNext(MoveType.Before, instr => instr.MatchLdloc2());
-        emitAltHook(nameof(ToggleSelectionPoint), MapEditor.MouseModes.Select);
-        //disable F+click (vanilla: creates filler room)
+        emitAltHook(nameof(ToggleSelectionPoint), emitSetMouseMode(MapEditor.MouseModes.Select));
+        //disable F+lclick (vanilla: creates filler room)
         ilcur.GotoNext(MoveType.Before, instr => instr.MatchCall(typeof(MInput).GetMethod("get_" + nameof(MInput.Keyboard))), instr => instr.MatchLdcI4('F'));
-        ilcur.MoveAfterLabels();
-        emitDisableHook();
+        Instruction fClickCheck = ilcur.Next;
+        ILLabel notFClick = null;
+        ilcur.GotoNext(MoveType.Before, ilcur => ilcur.MatchBrtrue(out notFClick) || ilcur.MatchBrfalse(out notFClick));
+        ilcur.Goto(fClickCheck, MoveType.AfterLabel);
+        emitCheckRoomControlsEnabled();
+        ilcur.EmitBrfalse(notFClick);
         //hook pressing left mouse anywhere over a room (vanilla: replaces selection with rooms under cursor)
-        //hook pressing left mouse over resize handle (vanilla: starts resizing room)
+        ilcur.GotoNext(MoveType.After, instr => instr.MatchLdloc2());
+        Instruction startDragRoomCheck = ilcur.Prev;
+        ILLabel dragShouldSelect = null;
+        ilcur.GotoNext(MoveType.After, instr => instr.MatchBrtrue(out dragShouldSelect) || instr.MatchBrfalse(out dragShouldSelect));
+        ilcur.GotoNext(MoveType.Before, instr => instr.MatchLdloc3());
+        Instruction startInterpretDrag = ilcur.Next;
+        ilcur.Goto(startDragRoomCheck, MoveType.AfterLabel);
+        emitAltHook(nameof(ReplaceSelectionPoint), () => ilcur.EmitBr(startInterpretDrag), dragShouldSelect);
         //hook pressing left mouse elsewhere over a room (vanilla: starts moving room)
-
+        ilcur.Goto(startInterpretDrag, MoveType.AfterLabel);
+        emitAltHook(nameof(StartMove), emitSetMouseMode(MapEditor.MouseModes.Move));
+        //hook pressing left mouse over resize handle (vanilla: starts resizing room)
+        ilcur.Goto(startInterpretDrag, MoveType.AfterLabel);
+        emitAltHook(nameof(StartResize), emitSetMouseMode(MapEditor.MouseModes.Resize), ilcur.MarkLabel(ilcur.Next));
+        //disable all right click actions (vanilla: F+rclick deletes hovered filler room, normal right click teleports to room)
+        ilcur.GotoNext(MoveType.Before, instr => instr.MatchCallvirt(typeof(MInput.MouseData).GetMethod("get_" + nameof(MInput.MouseData.PressedRightButton))));
+        ilcur.GotoPrev(MoveType.AfterLabel, instr => instr.MatchCall(typeof(MInput).GetMethod("get_" + nameof(MInput.Mouse))));
+        emitCheckRoomControlsEnabled();
+        ilcur.EmitBrfalse(afterMouseInputs);
       #endregion
 
       #region input events
