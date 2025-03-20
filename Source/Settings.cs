@@ -20,20 +20,25 @@ public class MRTSettings : EverestModuleSettings {
     public ButtonBinding Bind_DebugEntityMetadata {get; set;}
 
     /// <summary>
-    /// The directory containing the YAML files that graphs and routes are imported from and exported to.
+    /// User-facing text representing the directory containing the YAML files that graphs and routes are imported from and exported to.
     /// </summary>
-    public string Path {get; set;} = System.IO.Path.Combine(Monocle.Engine.AssemblyDirectory, "MacroRoutingTool");
+    public string MRTDirectory {get; set;} = System.IO.Path.Combine("%CELESTE%", "MacroRoutingTool");
 
-    public void CreatePathEntry(TextMenu menu, bool inGame) {
+    /// <summary>
+    /// Absolute path of the directory containing the YAML files that graphs and routes are imported from and exported to.
+    /// </summary>
+    public string MRTDirectoryAbsolute => MRTDirectory.Replace("%CELESTE%", Monocle.Engine.AssemblyDirectory, System.StringComparison.OrdinalIgnoreCase);
+
+    public void CreateMRTDirectoryEntry(TextMenu menu, bool inGame) {
         UI.ListItem item = new(false, true) {
             Container = menu,
             LeftWidthPortion = 0.35f
         };
         item.Left.Value = MRTDialog.PathSetting;
         item.Left.Handler.HandleUsing<string>(new());
-        item.Right.Value = Path;
+        item.Right.Value = MRTDirectory;
         item.Right.Handler.HandleUsing<string>(new() {
-            ValueParser = value => Path = value
+            ValueParser = value => MRTDirectory = value
         });
         menu.Add(item);
     }

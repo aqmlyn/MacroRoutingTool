@@ -1,17 +1,21 @@
+using System;
 using System.Collections.Generic;
 
 namespace Celeste.Mod.MacroRoutingTool.Data;
 
-//TODO YAML serialization
-
-public class Route {
+public class Route : MRTExport {
     /// <summary>
-    /// The graph this route is assigned to, if any.
+    /// Unique ID for this route.
     /// </summary>
-    public Graph Graph;
+    public Guid ID;
 
     /// <summary>
-    /// IDs of points this route visits in order.
+    /// ID of the graph this route is assigned to, if any.
+    /// </summary>
+    public Guid GraphID;
+
+    /// <summary>
+    /// IDs of points this route visits, in order.
     /// </summary>
     public List<uint> Points;
 

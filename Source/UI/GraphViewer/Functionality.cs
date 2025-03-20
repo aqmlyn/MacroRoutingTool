@@ -91,6 +91,8 @@ public static partial class GraphViewer {
         DebugMapHooks.OnRenderBetweenRoomsAndCursor += RenderGraph;
         DebugMapHooks.Update += Update;
         DebugMapHooks.RoomControlsEnabled.Event += DisableRoomControlsWhenViewerEnabled;
+        
+        IO.Initialize();
     }
 
     public static void Unload() {

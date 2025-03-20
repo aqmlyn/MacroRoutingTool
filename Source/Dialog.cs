@@ -144,4 +144,12 @@ public static class MRTDialog {
         //TODO results that only get applied if an expression is true
     }
   #endregion
+
+  #region IO issues
+    public static string IOFailCreateRoot => GetInternal("io_failcreaterootdir", false);
+    public static string IOFailOpenRoot => GetInternal("io_failopenrootdir", false);
+    public static string IOFailOpenFile => GetInternal("io_failopenfile", false);
+    public static string IOFailOpenFileList => GetInternal("io_failopenfilelist", false);
+    public static string IOFailOpenFileItem => GetInternal("io_failopenfileitem", false);
+  #endregion
 }

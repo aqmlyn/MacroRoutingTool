@@ -1,9 +1,13 @@
+using System;
 using System.Collections.Generic;
 using Celeste.Mod.MacroRoutingTool.Logic;
 
 namespace Celeste.Mod.MacroRoutingTool.Data;
 
 //TODO YAML serialization
+//NumericExpression => NumericExpression.Source -- used by Traversable.Requirements and Traversable.Results
+//AreaData => AreaData.SID, AreaData.Mode -- used by Graph.Area
+//Guid => Guid.ToString() -- used by Graph.ID, Route.ID, Route.GraphID
 
 /// <summary>
 /// A graph component that can be traversed to or along.
@@ -22,12 +26,12 @@ public class Traversable {
     /// <summary>
     /// Associates a weight value to each of any number of categories. For example, each of a graph's traversable items might have both "Time" and "Dashes" weights.
     /// </summary>
-    public Dictionary<string, float> Weight;
+    public Dictionary<string, object> Weight;
 
     /// <summary>
     /// Single requirement or list of requirements that must be met to traverse to or along this item.
     /// </summary>
-    public IRequirement Requires;
+    public IRequirement Requirements;
 
     /// <summary>
     /// Each key is the name of a variable in <c cref="NumericExpression.Variables">NumericExpression.Variables</c>, and
@@ -36,7 +40,12 @@ public class Traversable {
     public Dictionary<string, NumericExpression> Results;
 }
 
-public class Graph {
+public class Graph : MRTExport {
+    /// <summary>
+    /// Unique ID for this graph.
+    /// </summary>
+    public Guid ID;
+
   #region Graph structure
     /// <summary>
     /// The points in this graph.

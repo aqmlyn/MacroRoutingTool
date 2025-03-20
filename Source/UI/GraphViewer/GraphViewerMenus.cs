@@ -60,7 +60,7 @@ public static partial class GraphViewer {
                         ValueToString = val => {
                             item.Visible = true;
                             if (val == 0) {
-                                elem.Color = Color.LightGray;
+                                elem.Color = Color.Gray;
                                 return MRTDialog.SelectedNothing;
                             }
                             if (val > 1) {

@@ -1,11 +1,7 @@
 using System.Collections.Generic;
 using Celeste.Mod.MacroRoutingTool.UI;
-using Microsoft.Xna.Framework;
-using Monocle;
 
 namespace Celeste.Mod.MacroRoutingTool.Data;
-
-//TODO YAML serialization
 
 public class Point : Traversable {
   #region Graph structure
