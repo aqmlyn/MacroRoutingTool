@@ -132,3 +132,6 @@ macroroutingtool_io_failopenrootdir=${0} failed to open its directory! Search lo
 macroroutingtool_io_failopenfile=${0} failed to open the file. Search log.txt for [MacroRoutingTool/IO] for details.
 macroroutingtool_io_failopenfilelist=${0} failed to open some files. Search log.txt for [MacroRoutingTool/IO] for details.
 macroroutingtool_io_failopenfileitem=\nAttempted to open: ${0}\n${1}
+
+# Parsing issues
+macroroutingtool_parse_guidfail=Generated a new GUID to replace the missing or malformed GUID on line ${0}\nin ${1}

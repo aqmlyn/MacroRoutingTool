@@ -24,8 +24,12 @@ public class Route : MRTExport {
     /// text into a <see cref="Route"/>. Returns whether the parse was successful. 
     /// </summary>
     public static bool TryParse(string yaml, out Route route) {
-        //TODO
-        route = new();
-        return true;
+        try {
+            route = Reader.Deserialize<Route>(yaml);
+        } catch (Exception e) {
+            Logger.Error("MacroRoutingTool/YAML", $"{e.Message}\n{e.StackTrace}");
+            route = null;
+        }
+        return route == null;
     }
 }

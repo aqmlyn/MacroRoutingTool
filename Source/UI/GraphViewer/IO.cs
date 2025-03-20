@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using Microsoft.Build.Framework;
 using Microsoft.Xna.Framework;
 using Monocle;
 
@@ -9,6 +8,16 @@ namespace Celeste.Mod.MacroRoutingTool.UI;
 
 public static partial class GraphViewer {
     public static class IO {
+        public static string CurrentFullPath = "";
+
+        public static string CurrentDisplayPath {get {
+            string path = CurrentFullPath;
+            if (path.StartsWith(Engine.AssemblyDirectory)) {
+                path.Replace(Engine.AssemblyDirectory, "%CELESTE%");
+            }
+            return path;
+        }}
+
         public enum FileType {
             Any,
             Graph,

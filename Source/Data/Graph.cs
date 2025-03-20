@@ -4,11 +4,6 @@ using Celeste.Mod.MacroRoutingTool.Logic;
 
 namespace Celeste.Mod.MacroRoutingTool.Data;
 
-//TODO YAML serialization
-//NumericExpression => NumericExpression.Source -- used by Traversable.Requirements and Traversable.Results
-//AreaData => AreaData.SID, AreaData.Mode -- used by Graph.Area
-//Guid => Guid.ToString() -- used by Graph.ID, Route.ID, Route.GraphID
-
 /// <summary>
 /// A graph component that can be traversed to or along.
 /// </summary>
@@ -29,9 +24,9 @@ public class Traversable {
     public Dictionary<string, object> Weight;
 
     /// <summary>
-    /// Single requirement or list of requirements that must be met to traverse to or along this item.
+    /// Requirement that must be met to traverse to or along this item.
     /// </summary>
-    public IRequirement Requirements;
+    public NumericExpression Requirement;
 
     /// <summary>
     /// Each key is the name of a variable in <c cref="NumericExpression.Variables">NumericExpression.Variables</c>, and
@@ -50,24 +45,29 @@ public class Graph : MRTExport {
     /// <summary>
     /// The points in this graph.
     /// </summary>
-    public List<Point> Points;
+    public List<Point> Points = [];
 
     /// <summary>
     /// The connections in this graph.
     /// </summary>
-    public List<Connection> Connections;
+    public List<Connection> Connections = [];
   #endregion
 
     /// <summary>
-    /// Data associated with the Celeste map this graph is assigned to.
+    /// Data associated with the Celeste chapter this graph is assigned to.
     /// </summary>
     public AreaData Area;
+
+    /// <summary>
+    /// Index of the side of the chapter this graph is assigned to.
+    /// </summary>
+    public int Side;
 
   #region Viewer display
     /// <summary>
     /// Name displayed when this graph is shown in the viewer.
     /// </summary>
-    public string Name;
+    public string Name = "";
   #endregion
 
     /// <summary>
@@ -75,8 +75,12 @@ public class Graph : MRTExport {
     /// text into a <see cref="Graph"/>. Returns whether the parse was successful.
     /// </summary>
     public static bool TryParse(string yaml, out Graph graph) {
-        //TODO
-        graph = new();
-        return true;
+        try {
+            graph = Reader.Deserialize<Graph>(yaml);
+        } catch (Exception e) {
+            Logger.Error("MacroRoutingTool/YAML", $"{e.Message}\n{e.StackTrace}");
+            graph = null;
+        }
+        return graph == null;
     }
 }

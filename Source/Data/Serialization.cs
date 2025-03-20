@@ -1,4 +1,7 @@
 using System;
+using System.Linq;
+using YamlDotNet.Core;
+using YamlDotNet.Core.Events;
 using YamlDotNet.Serialization;
 
 namespace Celeste.Mod.MacroRoutingTool.Data;
@@ -29,6 +32,10 @@ public abstract class MRTExport {
     /// </summary>
     public static void BuildReader() {
         DeserializerBuilder builder = new();
+        builder = builder
+            .WithTypeConverter(NumericExpressionConverter.Instance)
+            .WithTypeConverter(AreaDataConverter.Instance)
+            .WithTypeConverter(GuidConverter.Instance);
         builder = OnBuildReader?.Invoke(builder) ?? builder;
         Reader = (Deserializer)builder.Build();
     }
@@ -58,7 +65,79 @@ public abstract class MRTExport {
     /// </summary>
     public static void BuildWriter() {
         SerializerBuilder builder = new();
+        builder = builder
+            .WithTypeConverter(NumericExpressionConverter.Instance)
+            .WithTypeConverter(AreaDataConverter.Instance)
+            .WithTypeConverter(GuidConverter.Instance);
         builder = OnBuildWriter?.Invoke(builder) ?? builder;
         Writer = (Serializer)builder.Build();
+    }
+}
+
+/// <summary>
+/// Contains methods that use YamlDotNet to read and write <see cref="NumericExpression"/>s to/from YAML-compliant strings.
+/// </summary>
+public class NumericExpressionConverter : IYamlTypeConverter {
+    public static NumericExpressionConverter Instance = new();
+
+    public bool Accepts(Type type) => type == typeof(Logic.NumericExpression);
+
+    public object ReadYaml(IParser parser, Type type, ObjectDeserializer rootDeserializer) {
+        string source = parser.Consume<Scalar>().Value;
+        if (string.IsNullOrWhiteSpace(source)) {
+            return null;
+        }
+        Logic.NumericExpression.TryParse(source, out Logic.NumericExpression exp, out _);
+        return exp;
+    }
+
+    public void WriteYaml(IEmitter emitter, object value, Type type, ObjectSerializer serializer) {
+        if (value == null) {
+            emitter.Emit(new Scalar(""));
+        } else {
+            emitter.Emit(new Scalar(((Logic.NumericExpression)value).Source));
+        }
+    }
+}
+
+/// <summary>
+/// Contains methods that use YamlDotNet to read and write <see cref="AreaData"/>s to/from YAML-compliant strings.
+/// </summary>
+public class AreaDataConverter : IYamlTypeConverter {
+    public static AreaDataConverter Instance = new();
+
+    public bool Accepts(Type type) => type == typeof(AreaData);
+
+    public object ReadYaml(IParser parser, Type type, ObjectDeserializer rootDeserializer) {
+        string sid = parser.Consume<Scalar>().Value;
+        if (string.IsNullOrWhiteSpace(sid)) {
+            return null;
+        }
+        return AreaData.Areas.FirstOrDefault(area => area.SID == sid, null);
+    }
+
+    public void WriteYaml(IEmitter emitter, object value, Type type, ObjectSerializer serializer) {
+        emitter.Emit(new Scalar(((AreaData)value).SID));
+    }
+}
+
+public class GuidConverter : IYamlTypeConverter {
+    public static GuidConverter Instance = new();
+
+    public bool Accepts(Type type) => type == typeof(Guid);
+
+    public object ReadYaml(IParser parser, Type type, ObjectDeserializer rootDeserializer) {
+        long line = parser.Current.Start.Line;
+        string guidStr = parser.Consume<Scalar>().Value;
+        if (!string.IsNullOrWhiteSpace(guidStr) && Guid.TryParse(guidStr, out Guid guidObj)) {
+            return guidObj;
+        }
+        string errorMsg = string.Format(MRTDialog.ParseGUIDFail, line, UI.GraphViewer.IO.CurrentDisplayPath);
+        Logger.Warn("MacroRoutingTool/Parse/YAML", errorMsg);
+        return new Guid();
+    }
+
+    public void WriteYaml(IEmitter emitter, object value, Type type, ObjectSerializer serializer) {
+        emitter.Emit(new Scalar(((Guid)value).ToString()));
     }
 }

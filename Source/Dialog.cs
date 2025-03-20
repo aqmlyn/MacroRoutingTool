@@ -152,4 +152,8 @@ public static class MRTDialog {
     public static string IOFailOpenFileList => GetInternal("io_failopenfilelist", false);
     public static string IOFailOpenFileItem => GetInternal("io_failopenfileitem", false);
   #endregion
+
+  #region Parsing issues
+    public static string ParseGUIDFail => GetInternal("parse_guidfail", false);
+  #endregion
 }
