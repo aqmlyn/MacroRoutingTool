@@ -55,7 +55,7 @@ public static partial class GraphViewer {
         menu.Add(graphHeader);
 
         //Choose another graph...
-        TextMenu.Button chooseGraphButton = new(MRTDialog.GraphMenuChooser){Container = menu};
+        TextMenu.Button chooseGraphButton = new(string.Format(MRTDialog.OpenChooser, MRTDialog.Graph)){Container = menu};
         menu.Add(chooseGraphButton);
 
         //Name

@@ -43,17 +43,19 @@ macroroutingtool_genlist_reorder=Reorder
 macroroutingtool_genopt_na=N/A
 
 # GRAPH INFO
+macroroutingtool_graph=graph
 macroroutingtool_graphmenu_header=GRAPH INFO
-macroroutingtool_graphmenu_choose=Choose another graph...
+#(chooser button uses chooser_enter)
 #(name label uses genlist_namelabel)
 macroroutingtool_graphmenu_editing_weights=Edit Weights
 macroroutingtool_graphmenu_editing_addpt=Add Point
 macroroutingtool_graphmenu_editing_addconn=Add Connection
 
 # ROUTE INFO
+macroroutingtool_route=route
 macroroutingtool_routemenu_header=ROUTE INFO
+#(chooser button uses chooser_enter)
 #(name label uses genlist_namelabel)
-macroroutingtool_routemenu_choose=Choose another route...
 macroroutingtool_routemenu_complete=Complete
 macroroutingtool_routemenu_possible=Possible
 macroroutingtool_routemenu_weightsheader=WEIGHTS
@@ -88,6 +90,7 @@ macroroutingtool_graphsel_connfrom=From
 macroroutingtool_graphsel_connto=To
 
 # Graph/route chooser
+macroroutingtool_chooser_enter=Choose another ${0}...
 macroroutingtool_chooser_assignedheader=ASSIGNED
 macroroutingtool_chooser_assignedsubheader=to {0}
 macroroutingtool_chooser_unassignedheader=UNASSIGNED
@@ -132,6 +135,11 @@ macroroutingtool_io_failopenrootdir=${0} failed to open its directory! Search lo
 macroroutingtool_io_failopenfile=${0} failed to open the file. Search log.txt for [MacroRoutingTool/IO] for details.
 macroroutingtool_io_failopenfilelist=${0} failed to open some files. Search log.txt for [MacroRoutingTool/IO] for details.
 macroroutingtool_io_failopenfileitem=\nAttempted to open: ${0}\n${1}
+macroroutingtool_io_reloaddir=Reloading MRT directory to relocate ${0} ${1}.
+macroroutingtool_io_loaddirtime=Loaded MRT directory in ${0}.
 
 # Parsing issues
-macroroutingtool_parse_guidfail=Generated a new GUID to replace the missing or malformed GUID on line ${0}\nin ${1}
+macroroutingtool_parse_genfaillist=Some errors occurred when attempting to parse some files.
+macroroutingtool_parse_genfailitem=\nAttempted to parse: ${0}\n${1}
+macroroutingtool_parse_guidfail=Generated a new GUID to replace the missing or malformed GUID on line ${0}.
+macroroutingtool_parse_brokelink_routetograph=Any routes previously assigned to that graph will have to be manually re-assigned.

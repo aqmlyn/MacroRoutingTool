@@ -31,7 +31,7 @@ public static class MRTDialog {
 
   
   #region Mod info
-    public static string ModSettingsSectionTitle => GetInternal("modsettingstitle");
+    public static string ModTitle => GetInternal("modsettingstitle");
     public static string DebugMapTitle => GetInternal("debugmap_title");
   #endregion
 
@@ -47,6 +47,8 @@ public static class MRTDialog {
   #endregion
 
   #region Generic
+    public static string Graph => GetInternal("graph");
+    public static string Route => GetInternal("route");
     public static string ItemName => GetInternal("genlist_namelabel");
     public static string RenameItem => GetInternal("genlist_rename");
     public static string DeleteItem => GetInternal("genlist_delete");
@@ -69,7 +71,6 @@ public static class MRTDialog {
 
   #region Graph menu
     public static string GraphMenuHeader => GetInternal("graphmenu_header");
-    public static string GraphMenuChooser => GetInternal("graphmenu_choose");
     public static string GraphMenuEditWeights => GetInternal("graphmenu_editing_weights");
     public static string GraphMenuAddPoint => GetInternal("graphmenu_editing_addpt");
     public static string GraphMenuAddConnection => GetInternal("graphmenu_editing_addconn");
@@ -77,7 +78,6 @@ public static class MRTDialog {
 
   #region Route menu
     public static string RouteMenuHeader => GetInternal("routemenu_header");
-    public static string RouteMenuChooser => GetInternal("routemenu_choose");
     public static string RouteIsComplete => GetInternal("routemenu_complete");
     public static string RouteIsPossible => GetInternal("routemenu_possible");
     public static string RouteWeightHeader => GetInternal("routemenu_weightsheader");
@@ -109,6 +109,7 @@ public static class MRTDialog {
   #endregion
 
   #region Graph/route chooser
+    public static string OpenChooser => GetInternal("chooser_enter", false);
     public static string ChooserAssignedHeader => GetInternal("chooser_assignedheader");
     public static string ChooserAssignedSubHeader => GetInternal("chooser_assignedsubheader");
     public static string ChooserUnassignedHeader => GetInternal("chooser_unassignedheader");
@@ -151,9 +152,12 @@ public static class MRTDialog {
     public static string IOFailOpenFile => GetInternal("io_failopenfile", false);
     public static string IOFailOpenFileList => GetInternal("io_failopenfilelist", false);
     public static string IOFailOpenFileItem => GetInternal("io_failopenfileitem", false);
+    public static string IORelocate => GetInternal("io_reloaddir", false);
   #endregion
 
   #region Parsing issues
+    public static string ParseFailList => GetInternal("parse_genfaillist", false);
+    public static string ParseFailItem => GetInternal("parse_genfailitem", false);
     public static string ParseGUIDFail => GetInternal("parse_guidfail", false);
   #endregion
 }

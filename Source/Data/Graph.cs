@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using Celeste.Mod.MacroRoutingTool.Logic;
 
@@ -37,9 +36,9 @@ public class Traversable {
 
 public class Graph : MRTExport {
     /// <summary>
-    /// Unique ID for this graph.
+    /// List of currently loaded graphs.
     /// </summary>
-    public Guid ID;
+    public static List<Graph> List = [];
 
   #region Graph structure
     /// <summary>
@@ -62,25 +61,4 @@ public class Graph : MRTExport {
     /// Index of the side of the chapter this graph is assigned to.
     /// </summary>
     public int Side;
-
-  #region Viewer display
-    /// <summary>
-    /// Name displayed when this graph is shown in the viewer.
-    /// </summary>
-    public string Name = "";
-  #endregion
-
-    /// <summary>
-    /// Tries to parse a given string of <seealso href="https://yaml.org/spec/1.2.2/#chapter-2-language-overview">YAML</seealso>-conformant
-    /// text into a <see cref="Graph"/>. Returns whether the parse was successful.
-    /// </summary>
-    public static bool TryParse(string yaml, out Graph graph) {
-        try {
-            graph = Reader.Deserialize<Graph>(yaml);
-        } catch (Exception e) {
-            Logger.Error("MacroRoutingTool/YAML", $"{e.Message}\n{e.StackTrace}");
-            graph = null;
-        }
-        return graph == null;
-    }
 }

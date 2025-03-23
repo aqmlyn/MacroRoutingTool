@@ -8,6 +8,38 @@ namespace Celeste.Mod.MacroRoutingTool.Data;
 
 public abstract class MRTExport {
     /// <summary>
+    /// Unique ID for this item.
+    /// </summary>
+    public Guid ID = new();
+
+    /// <summary>
+    /// Path to the file this item will be saved to.
+    /// </summary>
+    public string Path = "";
+
+    /// <summary>
+    /// Name displayed for this item.
+    /// </summary>
+    public string Name = "";
+
+    /// <summary>
+    /// Tries to parse a given string of <seealso href="https://yaml.org/spec/1.2.2/#chapter-2-language-overview">YAML</seealso>-conformant
+    /// text into a <typeparamref name="T"/>. Returns whether the parse was successful.
+    /// </summary>
+    public static bool TryParse<T>(string yaml, out T obj) where T : MRTExport {
+        try {
+            obj = ((Deserializer)typeof(T)
+              .GetField(nameof(Reader), System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static)
+              .GetValue(null)
+            ).Deserialize<T>(yaml);
+        } catch (Exception e) {
+            Logger.Error("MacroRoutingTool/YAML", $"{e.Message}\n{e.StackTrace}");
+            obj = null;
+        }
+        return obj == null;
+    }
+
+    /// <summary>
     /// Parses <seealso href="https://yaml.org/spec/1.2.2/#chapter-2-language-overview">YAML</seealso>-conformant
     /// text into an object.<br/><br/>
     /// To change the reader's config (see the Deserialization pages on the <seealso href="https://github.com/aaubry/YamlDotNet/wiki">YamlDotNet wiki</seealso>),
@@ -121,6 +153,9 @@ public class AreaDataConverter : IYamlTypeConverter {
     }
 }
 
+/// <summary>
+/// Contains methods that use YamlDotNet to read and write <see cref="Guid"/>s to/from YAML-compliant strings.
+/// </summary>
 public class GuidConverter : IYamlTypeConverter {
     public static GuidConverter Instance = new();
 
@@ -132,7 +167,7 @@ public class GuidConverter : IYamlTypeConverter {
         if (!string.IsNullOrWhiteSpace(guidStr) && Guid.TryParse(guidStr, out Guid guidObj)) {
             return guidObj;
         }
-        string errorMsg = string.Format(MRTDialog.ParseGUIDFail, line, UI.GraphViewer.IO.CurrentDisplayPath);
+        string errorMsg = string.Format(MRTDialog.ParseGUIDFail, line, IO.CurrentDisplayPath);
         Logger.Warn("MacroRoutingTool/Parse/YAML", errorMsg);
         return new Guid();
     }
