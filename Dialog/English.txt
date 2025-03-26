@@ -90,7 +90,7 @@ macroroutingtool_graphsel_connfrom=From
 macroroutingtool_graphsel_connto=To
 
 # Graph/route chooser
-macroroutingtool_chooser_enter=Choose another ${0}...
+macroroutingtool_chooser_enter=Choose another {0}...
 macroroutingtool_chooser_assignedheader=ASSIGNED
 macroroutingtool_chooser_assignedsubheader=to {0}
 macroroutingtool_chooser_unassignedheader=UNASSIGNED
@@ -130,16 +130,16 @@ macroroutingtool_reseditor_value=Edit Value
 #(Delete uses genlist_delete)
 
 # IO issues
-macroroutingtool_io_failcreaterootdir=${0} failed to create new directory! Search log.txt for [MacroRoutingTool/IO] for details.\nAttempted path: ${1}\n${2}
-macroroutingtool_io_failopenrootdir=${0} failed to open its directory! Search log.txt for [MacroRoutingTool/IO] for details.\nAttempted path: ${1}\n${2}
-macroroutingtool_io_failopenfile=${0} failed to open the file. Search log.txt for [MacroRoutingTool/IO] for details.
-macroroutingtool_io_failopenfilelist=${0} failed to open some files. Search log.txt for [MacroRoutingTool/IO] for details.
-macroroutingtool_io_failopenfileitem=\nAttempted to open: ${0}\n${1}
-macroroutingtool_io_reloaddir=Reloading MRT directory to relocate ${0} ${1}.
-macroroutingtool_io_loaddirtime=Loaded MRT directory in ${0}.
+macroroutingtool_io_failcreaterootdir={0} failed to create new directory! Search log.txt for [MacroRoutingTool/IO] for details.\nAttempted path: {1}\n{2}
+macroroutingtool_io_failopenrootdir={0} failed to open its directory! Search log.txt for [MacroRoutingTool/IO] for details.\nAttempted path: {1}\n{2}
+macroroutingtool_io_failopenfile={0} failed to open the file. Search log.txt for [MacroRoutingTool/IO] for details.
+macroroutingtool_io_failopenfilelist={0} failed to open some files. Search log.txt for [MacroRoutingTool/IO] for details.
+macroroutingtool_io_failopenfileitem=\nAttempted to open: {0}\n{1}
+macroroutingtool_io_reloaddir=Reloading MRT directory to relocate {0} {1}.
+macroroutingtool_io_loaddirtime=Loaded MRT directory in {0}.
 
 # Parsing issues
 macroroutingtool_parse_genfaillist=Some errors occurred when attempting to parse some files.
-macroroutingtool_parse_genfailitem=\nAttempted to parse: ${0}\n${1}
-macroroutingtool_parse_guidfail=Generated a new GUID to replace the missing or malformed GUID on line ${0}.
+macroroutingtool_parse_genfailitem=\nAttempted to parse: {0}\n{1}
+macroroutingtool_parse_guidfail=Generated a new GUID to replace the missing or malformed GUID on line {0}.
 macroroutingtool_parse_brokelink_routetograph=Any routes previously assigned to that graph will have to be manually re-assigned.

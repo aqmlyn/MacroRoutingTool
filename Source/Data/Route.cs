@@ -3,12 +3,7 @@ using System.Collections.Generic;
 
 namespace Celeste.Mod.MacroRoutingTool.Data;
 
-public class Route : MRTExport {
-    /// <summary>
-    /// List of currently loaded routes.
-    /// </summary>
-    public static List<Route> List = [];
-
+public class Route : MRTExport<Route> {
     /// <summary>
     /// ID of the graph this route is assigned to, if any.
     /// </summary>

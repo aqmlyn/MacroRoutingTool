@@ -34,12 +34,7 @@ public class Traversable {
     public Dictionary<string, NumericExpression> Results;
 }
 
-public class Graph : MRTExport {
-    /// <summary>
-    /// List of currently loaded graphs.
-    /// </summary>
-    public static List<Graph> List = [];
-
+public class Graph : MRTExport<Graph> {
   #region Graph structure
     /// <summary>
     /// The points in this graph.

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using Celeste.Mod.MacroRoutingTool.Data;
 using Microsoft.Xna.Framework;
 using Monocle;
@@ -9,6 +10,9 @@ using Monocle;
 namespace Celeste.Mod.MacroRoutingTool;
 
 public static partial class IO {
+    public static Color WarnColor = Color.Orange;
+    public static Color ErrorColor = Color.Red;
+
     public static string CurrentFullPath = "";
 
     public static string DisplayPath(string path) {
@@ -24,15 +28,32 @@ public static partial class IO {
 
     public static string CurrentDisplayPath => DisplayPath(CurrentFullPath);
 
-    public enum FileType {
-        Any,
-        Graph,
-        Route
+    /// <summary>
+    /// Files that store MRT data are expected to end with two extensions, e.g. <c>.graph.yaml</c>. This method returns
+    /// the first extension of the filename in the given path (<c>graph</c> in this example), which MRT interprets
+    /// as the type of object the file's contents should be parsed as (a <see cref="Graph"/> in this example).<br/>
+    /// If the filename in the given path doesn't contain two extensions, this method returns null.
+    /// </summary>
+    /// <param name="path">Path to the file whose MRT extension is to be read.</param>
+    public static string MRTExtension(string path) {
+        string[] splitByExtChar = Path.GetFileName(path)?.Split('.');
+        if (splitByExtChar?.Length > 2) {return splitByExtChar?[^2];}
+        return null;
     }
-    public static Dictionary<FileType, string> FileTypeText = new(){
-        {FileType.Any, "*"},
-        {FileType.Graph, "graph"},
-        {FileType.Route, "route"}
+
+    public static class FileType {
+        public const string Any = nameof(Any);
+        public const string Graph = nameof(Graph);
+        public const string Route = nameof(Route);
+    }
+    public class FileTypeInfo {
+        public Type Type;
+        public string Extension;
+    }
+    public static Dictionary<string, FileTypeInfo> FileTypeInfos = new(){
+        {FileType.Any, new(){Extension = "*"}},
+        {FileType.Graph, new(){Extension = "graph", Type = typeof(Graph)}},
+        {FileType.Route, new(){Extension = "route", Type = typeof(Route)}}
     };
 
     public static bool Working = true;
@@ -51,72 +72,81 @@ public static partial class IO {
         }
     }
 
-    public static bool TryLoadAll(FileType type = FileType.Any) {
-        try {
-            string[] paths = Directory.GetFiles(MRTModule.Settings.MRTDirectoryAbsolute, $"*.{FileTypeText[type]}.yaml", SearchOption.AllDirectories);
-            string ioFails = "";
-            foreach (var path in paths) {
-                string yaml = null;
-                try {
-                    yaml = File.ReadAllText(path);
-                    string[] splitByExtension = path.Split('.');
-                    string typetext = splitByExtension[^2]; //the last one is "yaml", the 2nd last is what MRT cares about
-                    //TODO unhardcode the association between file type and parsing method
-                    if (typetext == FileTypeText[FileType.Graph]) {
-                        if (Graph.TryParse(yaml, out Graph graph)) {
-                            Graph.List.Add(graph);
+    public static bool TryLoadAll(string type = FileType.Any) {
+        if (FileTypeInfos.TryGetValue(type, out FileTypeInfo searchTypeInfo)) {
+            try {
+                string[] paths = Directory.GetFiles(MRTModule.Settings.MRTDirectoryAbsolute, $"*.{searchTypeInfo.Extension}.yaml", SearchOption.AllDirectories);
+                string ioFails = "";
+                foreach (var path in paths) {
+                    string yaml = null;
+                    try {
+                        yaml = File.ReadAllText(path);
+                        dynamic result = null;
+                        if (FileTypeInfos.TryGetValue(MRTExtension(path), out FileTypeInfo resultTypeInfo)) {
+                            if ((bool)resultTypeInfo.Type
+                                .GetMethod(nameof(MRTExport<Graph>.TryParse), BindingFlags.Public | BindingFlags.Static)
+                                .Invoke(null, [yaml, result])
+                            ) {
+                                dynamic list = resultTypeInfo.Type
+                                    .GetField(nameof(Graph.List), BindingFlags.Public | BindingFlags.Static)
+                                    .GetValue(null);
+                                list.Add(result);
+                            }
                         }
-                    } else if (typetext == FileTypeText[FileType.Route]) {
-                        if (Route.TryParse(yaml, out Route route)) {
-                            Route.List.Add(route);
-                        }
+                    } catch (Exception e) {
+                        ioFails += string.Format(MRTDialog.IOFailOpenFileItem, DisplayPath(path), e.Message);
                     }
-                } catch (Exception e) {
-                    ioFails += string.Format(MRTDialog.IOFailOpenFileItem, DisplayPath(path), e.Message);
                 }
-            }
-            if (ioFails.Length > 0) {
-                ioFails = string.Format(MRTDialog.IOFailOpenFileList, MRTDialog.ModTitle) + ioFails;
-                Logger.Warn("MacroRoutingTool/IO", ioFails);
+                if (ioFails.Length > 0) {
+                    ioFails = string.Format(MRTDialog.IOFailOpenFileList, MRTDialog.ModTitle) + ioFails;
+                    Logger.Warn("MacroRoutingTool/IO", ioFails);
+                    Engine.Commands.Open = true;
+                    Engine.Commands.Log(ioFails, WarnColor);
+                }
+                return true;
+            } catch (Exception e) {
+                Working = false;
+                Logger.Error("MacroRoutingTool/IO", $"{e.Message}\n{e.StackTrace}");
                 Engine.Commands.Open = true;
-                Engine.Commands.Log(ioFails, Color.Orange);
+                Engine.Commands.Log(string.Format(MRTDialog.IOFailOpenRoot, MRTDialog.ModTitle, MRTModule.Settings.MRTDirectory, e.Message), ErrorColor);
+                return false;
             }
-            return true;
-        } catch (Exception e) {
-            Working = false;
-            Logger.Error("MacroRoutingTool/IO", $"{e.Message}\n{e.StackTrace}");
-            Engine.Commands.Open = true;
-            Engine.Commands.Log(string.Format(MRTDialog.IOFailOpenRoot, MRTDialog.ModTitle, MRTModule.Settings.MRTDirectory, e.Message), Color.Red);
-            return false;
         }
+        return false;
     }
 
-    public static bool TryOpen<T>(string path, Guid id, out T item) where T : MRTExport {
-        item = null;
+    public static bool TryOpen<T>(string path, Guid id, out T item) {
+        item = default;
         string yaml = null;
         try {
             yaml = File.ReadAllText(path);
             return (bool)typeof(T)
-                .GetMethod(nameof(MRTExport.TryParse), System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static)
+                .GetMethod(nameof(MRTExport<Graph>.TryParse), BindingFlags.Public | BindingFlags.Static)
+                .MakeGenericMethod(typeof(T))
                 .Invoke(null, [yaml, item]);
         } catch (FileNotFoundException) {
-            string[] splitByExtension = path.Split('.');
-            string typetext = splitByExtension[^2];
+            string typetext = MRTExtension(path);
             Logger.Info("MacroRoutingTool/IO", string.Format(MRTDialog.IORelocate, typetext, id));
             if (TryLoadAll()) {
-                //TODO unhardcode association between type text and list
-                if (typetext == FileTypeText[FileType.Graph]) {
-                    item = (T)(object)Graph.List.FirstOrDefault(graph => graph.ID == id, null);
-                } else if (typetext == FileTypeText[FileType.Route]) {
-                    item = (T)(object)Route.List.FirstOrDefault(route => route.ID == id, null);
+                List<T> list = (List<T>)typeof(T)
+                    .GetField(nameof(Graph.List), BindingFlags.Public | BindingFlags.Static)
+                    .GetValue(null);
+                FieldInfo idGetter = typeof(T).GetField(nameof(Graph.ID));
+                try {
+                    item = list.First(listItem => (Guid)idGetter.GetValue(listItem) == id);
+                    return true;
+                } catch (InvalidOperationException) {
+                    //can't use FirstOrDefault -- fallback can't be null bc T might be non-nullable, and shouldn't be default(T) bc that might be a possible value for a T.
+                    //so instead i use First. it throws this exception if there's no match (including if the list is empty), and that shouldn't be fatal.
+                    //instead, TODO prompt the user to either save the graph to a new file or discard the graph.
+                    return false;
                 }
-                return item != null;
             }
             return false;
         } catch (Exception e) {
             Logger.Error("MacroRoutingTool/IO", $"{e.Message}\n{e.StackTrace}");
             Engine.Commands.Open = true;
-            Engine.Commands.Log(string.Format(MRTDialog.IOFailOpenFile, MRTDialog.ModTitle) + string.Format(MRTDialog.IOFailOpenFileItem, path, e.Message), Color.Red);
+            Engine.Commands.Log(string.Format(MRTDialog.IOFailOpenFile, MRTDialog.ModTitle) + string.Format(MRTDialog.IOFailOpenFileItem, path, e.Message), ErrorColor);
         }
         return false;
     }

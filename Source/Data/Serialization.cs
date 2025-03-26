@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using YamlDotNet.Core;
 using YamlDotNet.Core.Events;
@@ -6,11 +7,32 @@ using YamlDotNet.Serialization;
 
 namespace Celeste.Mod.MacroRoutingTool.Data;
 
-public abstract class MRTExport {
+public abstract class MRTExport<T> {
     /// <summary>
     /// Unique ID for this item.
     /// </summary>
     public Guid ID = new();
+
+    
+    public static List<T> List;
+    
+    /// <summary>
+    /// Tries to parse a given string of <seealso href="https://yaml.org/spec/1.2.2/#chapter-2-language-overview">YAML</seealso>-conformant
+    /// text into a <typeparamref name="T"/>. Returns whether the parse was successful.
+    /// </summary>
+    public static bool TryParse(string yaml, out T obj) {
+        try {
+            obj = ((Deserializer)typeof(T)
+              .GetField(nameof(MRTExport<Graph>.Reader), System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static)
+              .GetValue(null)
+            ).Deserialize<T>(yaml);
+            return true;
+        } catch (Exception e) {
+            Logger.Error("MacroRoutingTool/YAML", $"{e.Message}\n{e.StackTrace}");
+            obj = default;
+            return false;
+        }
+    }
 
     /// <summary>
     /// Path to the file this item will be saved to.
@@ -21,23 +43,6 @@ public abstract class MRTExport {
     /// Name displayed for this item.
     /// </summary>
     public string Name = "";
-
-    /// <summary>
-    /// Tries to parse a given string of <seealso href="https://yaml.org/spec/1.2.2/#chapter-2-language-overview">YAML</seealso>-conformant
-    /// text into a <typeparamref name="T"/>. Returns whether the parse was successful.
-    /// </summary>
-    public static bool TryParse<T>(string yaml, out T obj) where T : MRTExport {
-        try {
-            obj = ((Deserializer)typeof(T)
-              .GetField(nameof(Reader), System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static)
-              .GetValue(null)
-            ).Deserialize<T>(yaml);
-        } catch (Exception e) {
-            Logger.Error("MacroRoutingTool/YAML", $"{e.Message}\n{e.StackTrace}");
-            obj = null;
-        }
-        return obj == null;
-    }
 
     /// <summary>
     /// Parses <seealso href="https://yaml.org/spec/1.2.2/#chapter-2-language-overview">YAML</seealso>-conformant
