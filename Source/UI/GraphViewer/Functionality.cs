@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Celeste.Editor;
 using Celeste.Mod.MacroRoutingTool.Data;
 using Monocle;
@@ -85,14 +86,32 @@ public static partial class GraphViewer {
         Unload();
     }
 
-    public static void Load(Scene scene) {
-        CreateMenus(scene);
-        SwapMenu(ModeInitialMenu);
+    public static void Load(MapEditor debugMap) {
         DebugMapHooks.OnRenderBetweenRoomsAndCursor += RenderGraph;
         DebugMapHooks.Update += Update;
         DebugMapHooks.RoomControlsEnabled.Event += DisableRoomControlsWhenViewerEnabled;
-        
+
+        CreateMenus(debugMap);
+        SwapMenu(ModeInitialMenu);
         IO.Initialize();
+        if (IO.Working) {
+            if (IO.TryLoadAll() && !Graph.List.Any()) {
+                //if there aren't any graphs in the MRT directory, automatically create a new one.
+                //its FromLoad will be false, so it will not be saved until the user changes its path or adds something to it.
+                AreaKey mapInfo = UIHelpers.GetAreaKey(debugMap);
+                Guid id = Guid.NewGuid();
+                Graph = new(){
+                    Area = UIHelpers.GetAreaData(debugMap),
+                    Side = (int)mapInfo.Mode, //TODO AltSidesHelper support
+                    ID = id,
+                    Name = MRTDialog.GraphDefaultName,
+                    Path = $"{id}.{IO.FileTypeInfos[IO.FileType.Graph].Extension}.yaml"
+                };
+            }
+        } else {
+            Engine.Commands.Open = true;
+            Engine.Commands.Log(MRTDialog.IOCantSave, IO.WarnColor);
+        }
     }
 
     public static void Unload() {

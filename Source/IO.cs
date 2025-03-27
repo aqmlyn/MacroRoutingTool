@@ -122,7 +122,6 @@ public static partial class IO {
             yaml = File.ReadAllText(path);
             return (bool)typeof(T)
                 .GetMethod(nameof(MRTExport<Graph>.TryParse), BindingFlags.Public | BindingFlags.Static)
-                .MakeGenericMethod(typeof(T))
                 .Invoke(null, [yaml, item]);
         } catch (FileNotFoundException) {
             string typetext = MRTExtension(path);

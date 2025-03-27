@@ -112,7 +112,7 @@ public static class DebugMapTweaks {
         if (visibleCount == 0) {return;}
         Vector2 mousePos = (Vector2)MousePos.GetValue(debugMap);
         Vector2 drawPos = new(
-            mousePos.X + (CursorRadius + HoverTextHSpacing) / camera.Zoom,
+            mousePos.X + (CursorRadius + HoverTextHSpacing * 2) / camera.Zoom,
             mousePos.Y - ((visibleCount % 2 == 0 ? HoverTextVSpacing / 2 : ActiveFont.LineHeight * HoverTextScale / 2) + ActiveFont.LineHeight * HoverTextScale * (visibleCount / 2) + HoverTextVSpacing * ((visibleCount - 1) / 2)) / camera.Zoom
         );
         WhiteRect.Draw(

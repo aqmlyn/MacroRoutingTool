@@ -59,10 +59,16 @@ public static partial class GraphViewer {
         menu.Add(chooseGraphButton);
 
         //Name
-        ListItem graphNameDisplay = new(false, true){Container = menu};
+        ListItem graphNameDisplay = new(false, true){Container = menu, LeftWidthPortion = 0.4f};
         graphNameDisplay.Left.Value = MRTDialog.ItemName;
         graphNameDisplay.Left.Handler.HandleUsing<string>(new());
         menu.Add(graphNameDisplay);
+
+        //Path
+        ListItem graphPathDisplay = new(false, true){Container = menu, LeftWidthPortion = 0.4f};
+        graphPathDisplay.Left.Value = MRTDialog.ItemPath;
+        graphPathDisplay.Left.Handler.HandleUsing<string>(new());
+        menu.Add(graphPathDisplay);
 
         return menu;
     }

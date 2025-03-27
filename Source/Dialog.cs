@@ -40,6 +40,7 @@ public static class MRTDialog {
   #endregion
 
   #region Debug info
+    //TODO AltSidesHelper support
     public static Dictionary<AreaMode, Func<string>> ChapterSideTexts = new() {
         {AreaMode.BSide, () => Get("overworld_remix")},
         {AreaMode.CSide, () => Get("overworld_remix2")}
@@ -48,8 +49,11 @@ public static class MRTDialog {
 
   #region Generic
     public static string Graph => GetInternal("graph");
+    public static string GraphDefaultName => GetInternal("graph_defaultname");
     public static string Route => GetInternal("route");
+    public static string RouteDefaultName => GetInternal("route_defaultname");
     public static string ItemName => GetInternal("genlist_namelabel");
+    public static string ItemPath => GetInternal("genlist_pathlabel");
     public static string RenameItem => GetInternal("genlist_rename");
     public static string DeleteItem => GetInternal("genlist_delete");
     public static string CreateNewItem => GetInternal("genlist_createnew");
@@ -149,6 +153,7 @@ public static class MRTDialog {
   #region IO issues
     public static string IOFailCreateRoot => GetInternal("io_failcreaterootdir", false);
     public static string IOFailOpenRoot => GetInternal("io_failopenrootdir", false);
+    public static string IOCantSave => GetInternal("io_cantsave");
     public static string IOFailOpenFile => GetInternal("io_failopenfile", false);
     public static string IOFailOpenFileList => GetInternal("io_failopenfilelist", false);
     public static string IOFailOpenFileItem => GetInternal("io_failopenfileitem", false);

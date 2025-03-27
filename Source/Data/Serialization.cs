@@ -12,9 +12,17 @@ public abstract class MRTExport<T> {
     /// Unique ID for this item.
     /// </summary>
     public Guid ID = new();
-
     
-    public static List<T> List;
+    /// <summary>
+    /// List of currently loaded items of this type.
+    /// </summary>
+    public static List<T> List = [];
+
+    /// <summary>
+    /// Whether this item was loaded from a file (true) or created this session (false).
+    /// </summary>
+    [YamlIgnore]
+    public bool FromLoad = false;
     
     /// <summary>
     /// Tries to parse a given string of <seealso href="https://yaml.org/spec/1.2.2/#chapter-2-language-overview">YAML</seealso>-conformant
@@ -26,6 +34,9 @@ public abstract class MRTExport<T> {
               .GetField(nameof(MRTExport<Graph>.Reader), System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static)
               .GetValue(null)
             ).Deserialize<T>(yaml);
+            if (obj is MRTExport<T> ioObj) {
+                ioObj.FromLoad = true;
+            }
             return true;
         } catch (Exception e) {
             Logger.Error("MacroRoutingTool/YAML", $"{e.Message}\n{e.StackTrace}");

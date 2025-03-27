@@ -34,6 +34,7 @@ macroroutingtool_viewermode_routing=Routing
 
 # Generic item controls
 macroroutingtool_genlist_namelabel=Name
+macroroutingtool_genlist_pathlabel=Path
 macroroutingtool_genlist_rename=Rename
 macroroutingtool_genlist_delete=Delete
 macroroutingtool_genlist_createnew=Create New
@@ -44,6 +45,7 @@ macroroutingtool_genopt_na=N/A
 
 # GRAPH INFO
 macroroutingtool_graph=graph
+macroroutingtool_graph_defaultname=Unnamed
 macroroutingtool_graphmenu_header=GRAPH INFO
 #(chooser button uses chooser_enter)
 #(name label uses genlist_namelabel)
@@ -53,6 +55,7 @@ macroroutingtool_graphmenu_editing_addconn=Add Connection
 
 # ROUTE INFO
 macroroutingtool_route=route
+macroroutingtool_route_defaultname=Unnamed
 macroroutingtool_routemenu_header=ROUTE INFO
 #(chooser button uses chooser_enter)
 #(name label uses genlist_namelabel)
@@ -132,6 +135,7 @@ macroroutingtool_reseditor_value=Edit Value
 # IO issues
 macroroutingtool_io_failcreaterootdir={0} failed to create new directory! Search log.txt for [MacroRoutingTool/IO] for details.\nAttempted path: {1}\n{2}
 macroroutingtool_io_failopenrootdir={0} failed to open its directory! Search log.txt for [MacroRoutingTool/IO] for details.\nAttempted path: {1}\n{2}
+macroroutingtool_io_cantsave=File access isn't working. Open or reopen the graph chooser or route chooser to try again.\nYou can create a new graph or route via those menus, but you may not be able to export it.
 macroroutingtool_io_failopenfile={0} failed to open the file. Search log.txt for [MacroRoutingTool/IO] for details.
 macroroutingtool_io_failopenfilelist={0} failed to open some files. Search log.txt for [MacroRoutingTool/IO] for details.
 macroroutingtool_io_failopenfileitem=\nAttempted to open: {0}\n{1}
