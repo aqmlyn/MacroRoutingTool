@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using Microsoft.Xna.Framework;
-using Monocle;
 
 namespace Celeste.Mod.MacroRoutingTool.UI;
 
@@ -42,32 +41,30 @@ public static partial class GraphViewer {
         return menu;
     }
 
-    public static void SwapMenu(Menu menu, Scene scene = null) {
+    public static void SwapMenu(Menu menu) {
         if (CurrentMenu != null) {
             CurrentMenu.Focused = CurrentMenu.Visible = false;
         }
         if (menu == null) {
             CurrentMenu = null;
-        } else if (scene == null) {
-            CurrentMenu = menu.Current;
         } else {
             menu.Current.RemoveSelf();
             CurrentMenu = menu.Create();
-            scene.Add(CurrentMenu);
+            DebugMap.Add(CurrentMenu);
         }
         if (CurrentMenu != null) {
             CurrentMenu.Focused = CurrentMenu.Visible = true;
         }
     }
 
-    public static void CreateMenus(Scene scene) {
+    public static void CreateMenus() {
         foreach (Menu menu in
             typeof(GraphViewer)
             .GetFields(BindingFlags.Public | BindingFlags.Static)
             .Where(field => field.FieldType == typeof(Menu))
             .Select(field => (Menu)field.GetValue(null))
         ) {
-            scene.Add(menu.Create());
+            DebugMap.Add(menu.Create());
             if (menu.InitialFor != null) {
                 InitialMenusByMode[(int)menu.InitialFor] = menu;
             }

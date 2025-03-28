@@ -9,7 +9,7 @@ public static partial class GraphViewer {
             //Name
             ListItem itemNameDisplay = new(false, true);
             itemNameDisplay.Left.Value = MRTDialog.ItemName;
-            itemNameDisplay.Left.Handler.HandleUsing<string>(new());
+            itemNameDisplay.Left.Handler.Bind<string>(new());
 
             //Weights
             TextMenu.Button toggleShowWeights = new(MRTDialog.SelectionWeightList);
@@ -32,12 +32,12 @@ public static partial class GraphViewer {
             //X
             ListItem pointX = new(false, true);
             pointX.Left.Value = MRTDialog.PointSelectionX;
-            pointX.Left.Handler.HandleUsing<string>(new());
+            pointX.Left.Handler.Bind<string>(new());
 
             //Y
             ListItem pointY = new(false, true);
             pointY.Left.Value = MRTDialog.PointSelectionY;
-            pointY.Left.Handler.HandleUsing<string>(new());
+            pointY.Left.Handler.Bind<string>(new());
 
             //Default End
             MultiDisplayData.TextMenuOption<string> pointEndType = new(MRTDialog.PointSelectionEndpointType);
@@ -56,12 +56,12 @@ public static partial class GraphViewer {
             //From
             ListItem connFrom = new(false, true);
             connFrom.Left.Value = MRTDialog.ConnectionSelectionFrom;
-            connFrom.Left.Handler.HandleUsing<string>(new());
+            connFrom.Left.Handler.Bind<string>(new());
 
             //To
             ListItem connTo = new(false, true);
             connTo.Left.Value = MRTDialog.ConnectionSelectionTo;
-            connTo.Left.Handler.HandleUsing<string>(new());
+            connTo.Left.Handler.Bind<string>(new());
 
             return [
                 connFrom,

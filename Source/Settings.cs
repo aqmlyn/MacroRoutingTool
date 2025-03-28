@@ -35,10 +35,10 @@ public class MRTSettings : EverestModuleSettings {
             LeftWidthPortion = 0.35f
         };
         item.Left.Value = MRTDialog.PathSetting;
-        item.Left.Handler.HandleUsing<string>(new());
+        item.Left.Handler.Bind<string>(new());
         item.Right.Value = MRTDirectory;
-        item.Right.Handler.HandleUsing<string>(new() {
-            ValueParser = value => MRTDirectory = value
+        item.Right.Handler.Bind<string>(new() {
+            CommitNewValue = value => MRTDirectory = value
         });
         menu.Add(item);
     }

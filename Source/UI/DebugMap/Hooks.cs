@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Celeste.Editor;
 using Microsoft.Xna.Framework.Graphics;
 using Monocle;
@@ -110,6 +111,13 @@ public static partial class DebugMapHooks {
         BeforeMapCtor?.Invoke();
         orig(self, area, reloadMapData);
         AfterMapCtor?.Invoke(self);
+    }
+
+    public static Dictionary<Type, Action<Scene>> OnExit = [];
+
+    public static void EnableOn_SceneEnd(On.Monocle.Scene.orig_End orig, Scene self) {
+        orig(self);
+        if (OnExit.TryGetValue(self.GetType(), out var function)) {function?.Invoke(self);}
     }
 
     //TODO Render hook: probably move to an event instead of hardcoding things into the On hook itself

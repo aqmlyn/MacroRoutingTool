@@ -36,7 +36,7 @@ public static partial class GraphViewer {
                     TextMenuUtils.TextElement elem = (TextMenuUtils.TextElement)item.Left.Element;
                     elem.Justify = new Vector2(0.5f, 0.5f);
                     item.Left.Value = 0;
-                    item.Left.Handler.HandleUsing<int>(new() {
+                    item.Left.Handler.Bind<int>(new() {
                         ValueToString = val => {
                             item.Visible = true;
                             if (val == 0) {

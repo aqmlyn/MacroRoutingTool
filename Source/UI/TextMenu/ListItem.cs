@@ -26,16 +26,15 @@ public class ListItem : TextMenu.Item {
             }
         }
 
-        public class TypedValueHandler<T> {
+        public class ValueHandler<T> {
             public Func<T> ValueGetter;
-            public Func<string, T> ValueParser;
+            public Func<string, T> CommitNewValue;
             public T Value;
-            public Func<T, string> ValueToString = value => value?.ToString() ?? "";
+            public Func<T, string> ValueToString;
         }
 
         public class ValueHandler {
-            public Func<object> ValueGetter;
-            public Func<string, object> ValueParser;
+            public Func<string, object> CommitNewValue;
             public object Value {
                 get => GetValue?.Invoke();
                 set => SetValue?.Invoke(value);
@@ -44,18 +43,18 @@ public class ListItem : TextMenu.Item {
             public Action<object> SetValue;
             public Func<object, string> ValueToString;
 
-            public void HandleUsing<T>(TypedValueHandler<T> handler) {
+            public void Bind<T>(ValueHandler<T> handler) {
                 GetValue = () => handler.Value = handler.ValueGetter == null ? handler.Value : handler.ValueGetter();
                 SetValue = val => handler.Value = (T)val;
-                ValueParser = str => handler.ValueParser == null ? null : handler.ValueParser(str);
-                ValueToString = val => handler.ValueToString?.Invoke((T)val);
+                CommitNewValue = str => handler.CommitNewValue == null ? null : handler.CommitNewValue(str);
+                ValueToString = val => handler.ValueToString == null ? val?.ToString() : handler.ValueToString((T)val);
             }
         }
         public ValueHandler Handler = new();
 
         public object _value;
         public object Value {
-            get {return _value = Handler.ValueGetter?.Invoke() ?? _value;}
+            get {return _value = Handler.GetValue?.Invoke() ?? _value;}
             set {_value = value;}
         }
         public string ValueString => Handler.ValueToString?.Invoke(Value) ?? "";
@@ -103,7 +102,7 @@ public class ListItem : TextMenu.Item {
                 };
                 textbox.OnTextInputCharActions['\r' /*enter*/] = tb => {
                     tb.StopTyping();
-                    side.Value = side.Handler.ValueParser?.Invoke(tb.Text);
+                    side.Value = side.Handler.CommitNewValue?.Invoke(tb.Text);
                 };
                 side.Element = textbox;
             } else {

@@ -23,6 +23,11 @@ public static partial class GraphViewer {
     }
 
     /// <summary>
+    /// The debug map in which the graph viewer is currently open.
+    /// </summary>
+    public static MapEditor DebugMap = null;
+
+    /// <summary>
     /// Whether the <see cref="CurrentMenu"/> is currently focused. 
     /// </summary>
     public static bool InMenu => CurrentMenu != null && (CurrentMenu.Focused || CurrentMenu.RenderAsFocused);
@@ -116,11 +121,20 @@ public static partial class GraphViewer {
 
     public static void EnableListeners() {
         DebugMapHooks.AfterMapCtor += Load;
+        DebugMapHooks.OnRenderBetweenRoomsAndCursor += RenderGraph;
+        DebugMapHooks.Update += Update;
+        DebugMapHooks.RoomControlsEnabled.Event += DisableRoomControlsWhenViewerEnabled;
+        var onExitDebugMap = DebugMapHooks.OnExit.Ensure(typeof(MapEditor));
+        onExitDebugMap += Unload;
     }
 
     public static void DisableListeners() {
         DebugMapHooks.AfterMapCtor -= Load;
-        Unload();
+        DebugMapHooks.OnRenderBetweenRoomsAndCursor -= RenderGraph;
+        DebugMapHooks.Update -= Update;
+        DebugMapHooks.RoomControlsEnabled.Event -= DisableRoomControlsWhenViewerEnabled;
+        var onExitDebugMap = DebugMapHooks.OnExit.Ensure(typeof(MapEditor));
+        onExitDebugMap -= Unload;
     }
 
     /// <summary>
@@ -136,19 +150,19 @@ public static partial class GraphViewer {
         /// <summary>
         /// Called to determine whether this item was the item most recently viewed in the previous session.
         /// </summary>
-        public Func<MapEditor, object, bool> CheckID;
+        public Func<object, bool> CheckID;
         /// <summary>
         /// Called to determine whether this item should be able to be viewed in the current graph viewer state.
         /// </summary>
-        public Func<MapEditor, object, bool> IsSuitable;
+        public Func<object, bool> IsSuitable;
         /// <summary>
         /// Called to create a new item if no suitable item was found.
         /// </summary>
-        public Func<MapEditor, object> MakeNew;
+        public Func<object> MakeNew;
         /// <summary>
         /// Called to configure the item created by <see cref="MakeNew"/>. 
         /// </summary>
-        public Action<MapEditor, object> ConfigureNew;
+        public Action<object> ConfigureNew;
         /// <summary>
         /// Gets the <see cref="MRTExport{T}.List"/> of the class passed as the type parameter to <see cref="Bind"/>.
         /// </summary>
@@ -165,9 +179,9 @@ public static partial class GraphViewer {
         /// <returns>A handler that can be used without knowing <typeparamref name="T"/>.</returns>
         public static FirstLoadHandler Bind<T>(FirstLoadHandler<T> typedHandler) where T : MRTExport<T>, new() {
             return new(){
-                CheckID = (debugMap, val) => typedHandler.CheckID?.Invoke(debugMap, (T)val) ?? false,
-                IsSuitable = (debugMap, val) => typedHandler.IsSuitable?.Invoke(debugMap, (T)val) ?? false,
-                ConfigureNew = (debugMap, val) => typedHandler.ConfigureNew?.Invoke(debugMap, (T)val),
+                CheckID = val => typedHandler.CheckID?.Invoke((T)val) ?? false,
+                IsSuitable = val => typedHandler.IsSuitable?.Invoke((T)val) ?? false,
+                ConfigureNew = val => typedHandler.ConfigureNew?.Invoke((T)val),
                 GetList = () => typedHandler.List.ConvertAll(val => (MRTExport)val),
                 MakeNew = typedHandler.MakeNew,
                 SetField = val => typedHandler.Field.SetValue(null, val)
@@ -183,33 +197,33 @@ public static partial class GraphViewer {
         /// <summary>
         /// <inheritdoc cref="FirstLoadHandler.CheckID"/>
         /// </summary>
-        public Func<MapEditor, T, bool> CheckID;
+        public Func<T, bool> CheckID;
         /// <summary>
         /// <inheritdoc cref="FirstLoadHandler.IsSuitable"/> 
         /// </summary>
-        public Func<MapEditor, T, bool> IsSuitable;
+        public Func<T, bool> IsSuitable;
         /// <summary>
         /// <inheritdoc cref="FirstLoadHandler.ConfigureNew"/> 
         /// </summary>
-        public Action<MapEditor, T> ConfigureNew;
+        public Action<T> ConfigureNew;
         /// <summary>
         /// Gets <typeparamref name="T"/>.List.
         /// </summary>
         public List<T> List => (List<T>)typeof(T)
             .BaseType
-            .GetField(nameof(MRTExport<T>.List), System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static)
+            .GetField(nameof(MRTExport<T>.List), BindingFlags.Public | BindingFlags.Static)
             .GetValue(null);
         /// <summary>
         /// <inheritdoc cref="FirstLoadHandler.MakeNew"/> 
         /// </summary>
-        public T MakeNew(MapEditor debugMap) {
+        public T MakeNew() {
             Guid id = Guid.NewGuid();
             T obj = new(){
                 ID = id,
                 Name = MRTDialog.GraphDefaultName,
                 Path = $"{id}.{IO.FileTypeInfos[typeof(T).Name].Extension}.yaml"
             };
-            ConfigureNew?.Invoke(debugMap, obj);
+            ConfigureNew?.Invoke(obj);
             return obj;
             //do not export the new item or add it to its class's list here.
             //that should wait until an autosave with pending changes or an unsaved changes prompt
@@ -223,24 +237,24 @@ public static partial class GraphViewer {
         {nameof(Data.Graph), FirstLoadHandler.Bind<Graph>(new(){
             //TODO AltSidesHelper support
             Field = typeof(GraphViewer).GetField(nameof(Graph), BindingFlags.Public | BindingFlags.Static),
-            CheckID = (debugMap, graph) => Utils.MapSide.TryParse(UIHelpers.GetAreaKey(debugMap), out var sideInfo)
+            CheckID = graph => Utils.MapSide.TryParse(UIHelpers.GetAreaKey(DebugMap), out var sideInfo)
                 && MRT.SaveData.LastGraphID.TryGetValue(sideInfo, out Guid id)
                 && graph.ID == id,
-            IsSuitable = (debugMap, graph) => {
-                AreaKey mapInfo = UIHelpers.GetAreaKey(debugMap);
+            IsSuitable = graph => {
+                AreaKey mapInfo = UIHelpers.GetAreaKey(DebugMap);
                 return graph.Area.SID == mapInfo.SID && graph.Side == (int)mapInfo.Mode;
             },
-            ConfigureNew = (debugMap, graph) => {
-                AreaKey mapInfo = UIHelpers.GetAreaKey(debugMap);
+            ConfigureNew = graph => {
+                AreaKey mapInfo = UIHelpers.GetAreaKey(DebugMap);
                 graph.Area = AreaData.Get(mapInfo);
                 graph.Side = (int)mapInfo.Mode;
             }
         })},
         {nameof(Data.Route), FirstLoadHandler.Bind<Route>(new(){
             Field = typeof(GraphViewer).GetField(nameof(Route), BindingFlags.Public | BindingFlags.Static),
-            CheckID = (debugMap, route) => MRT.SaveData.LastRouteID.TryGetValue(Graph.ID, out Guid id) && route.ID == id,
-            IsSuitable = (debugMap, route) => route.GraphID == Graph.ID,
-            ConfigureNew = (debugMap, route) => {
+            CheckID = route => MRT.SaveData.LastRouteID.TryGetValue(Graph.ID, out Guid id) && route.ID == id,
+            IsSuitable = route => route.GraphID == Graph.ID,
+            ConfigureNew = route => {
                 route.GraphID = Graph.ID;
             }
         })}
@@ -249,12 +263,16 @@ public static partial class GraphViewer {
     /// <summary>
     /// Called by <see cref="Load"/> if <see cref="FirstLoad"/> is true.  
     /// </summary>
-    public static Action<MapEditor> OnFirstLoad = debugMap => {
+    public static Action OnFirstLoad = () => {
         IO.Initialize();
         if (IO.Working) {
             if (IO.TryLoadAll()) {
                 foreach (var handler in FirstLoadHandlers.Values) {
-                    var idMatches = handler.GetList().Where(obj => handler.CheckID?.Invoke(debugMap, obj) ?? false);
+                    //for each item type viewable in the graph viewer, select an item to have initially open as follows:
+                    //1. if the user had an item open in the previous session and an item with that ID still exists, open that.
+                    //2. if any currently loaded items should be viewable given the current graph state (checked by IsSuitable), open one of those.
+                    //3. if all else fails, just create a new item.
+                    var idMatches = handler.GetList().Where(obj => handler.CheckID?.Invoke(obj) ?? false);
                     if (idMatches.Any()) {
                         if (idMatches.Count() > 1) {
                             //TODO prompt to resolve duplicate ID
@@ -262,13 +280,13 @@ public static partial class GraphViewer {
                         handler.SetField?.Invoke(idMatches.First());
                     } else {
                         var suitable = handler.GetList()
-                            .Where(obj => handler.IsSuitable?.Invoke(debugMap, obj) ?? false)
+                            .Where(obj => handler.IsSuitable?.Invoke(obj) ?? false)
                             .MaxBy(obj => {
                                 //if there are multiple suitable matches, choose the one whose file was most recently modified
                                 try {return File.GetLastWriteTime(obj.Path);}
                                 catch {return new DateTime(0);}
                             });
-                        handler.SetField?.Invoke(suitable ?? handler.MakeNew?.Invoke(debugMap));
+                        handler.SetField?.Invoke(suitable ?? handler.MakeNew?.Invoke());
                     }
                 }
             }
@@ -278,31 +296,27 @@ public static partial class GraphViewer {
         }
 
         //create the menus after selecting a graph and route
-        CreateMenus(debugMap);
-        SwapMenu(ModeInitialMenu);
+        CreateMenus();
     };
 
     /// <summary>
     /// Enables hooks necessary for graph viewer functionality when the debug map is opened.
     /// </summary>
     public static void Load(MapEditor debugMap) {
-        DebugMapHooks.OnRenderBetweenRoomsAndCursor += RenderGraph;
-        DebugMapHooks.Update += Update;
-        DebugMapHooks.RoomControlsEnabled.Event += DisableRoomControlsWhenViewerEnabled;
+        DebugMap = debugMap;
 
         if (FirstLoad) {
             FirstLoad = false;
-            OnFirstLoad?.Invoke(debugMap);
+            OnFirstLoad?.Invoke();
         }
+        SwapMenu(ModeInitialMenu);
     }
 
     /// <summary>
     /// Disables the graph viewer-related hooks that were enabled by <see cref="Load"/>. 
     /// </summary>
-    public static void Unload() {
-        DebugMapHooks.OnRenderBetweenRoomsAndCursor -= RenderGraph;
-        DebugMapHooks.Update -= Update;
-        DebugMapHooks.RoomControlsEnabled.Event -= DisableRoomControlsWhenViewerEnabled;
+    public static void Unload(Scene _) {
+        
     }
 
     public static void Update(MapEditor debugMap) {
