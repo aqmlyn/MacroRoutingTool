@@ -2,8 +2,8 @@
 
 namespace Celeste.Mod.MacroRoutingTool;
 
-public class MRTModule : EverestModule {
-    public static MRTModule Instance { get; private set; }
+public class MRT : EverestModule {
+    public static MRT Instance { get; private set; }
 
     public override Type SettingsType => typeof(MRTSettings);
     public static MRTSettings Settings => (MRTSettings) Instance._Settings;
@@ -14,7 +14,7 @@ public class MRTModule : EverestModule {
     public override Type SaveDataType => typeof(MRTSaveData);
     public static MRTSaveData SaveData => (MRTSaveData) Instance._SaveData;
 
-    public MRTModule() {
+    public MRT() {
         Instance = this;
     }
 

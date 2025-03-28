@@ -158,7 +158,7 @@ public static partial class GraphViewer {
         //TODO where possible, move image/text measuring to somewhere only called if Dialog.Language has changed since opening debug map.
         //should noticeably improve performance over measuring here, since this is called every frame
 
-        if ((Modes)MRTModule.SaveData.GraphViewerMode != Modes.Disabled) {
+        if ((Modes)MRT.SaveData.GraphViewerMode != Modes.Disabled) {
             //menu back
             Draw.Rect(0, HeadbarHeight, MenuWidth + MarginH * 2, Celeste.TargetHeight - HeadbarHeight, Color.Black * MenuBackOpacity);
             for (int i = 1; i < MarginH * 2; i++) {
@@ -172,11 +172,11 @@ public static partial class GraphViewer {
         //take measurements to determine position and size of each UI element in the mod control display
         //(we need to do this now so we can make the back big enough to fit it all)
         //TODO decide what to do if bind display text will be drawn behind the map banner
-        MTexture focusBindTexture = UIHelpers.DebugBindTexture(MRTModule.Settings.Bind_DebugFocusGraphMenu);
+        MTexture focusBindTexture = UIHelpers.DebugBindTexture(MRT.Settings.Bind_DebugFocusGraphMenu);
         float focusBindTextureScale = (float)(controlBackTexture.Height - MarginV) / focusBindTexture.Height;
         float bindLabelScale = (controlBackTexture.Height - MarginV) / ActiveFont.Measure("T").Y;
         float focusBindLabelLeft = focusBindTexture.Width * focusBindTextureScale + MarginH * 1.5f;
-        MTexture modeBindTexture = UIHelpers.DebugBindTexture(MRTModule.Settings.Bind_DebugGraphViewerMode);
+        MTexture modeBindTexture = UIHelpers.DebugBindTexture(MRT.Settings.Bind_DebugGraphViewerMode);
         float modeBindTextureScale = (float)(controlBackTexture.Height - MarginV) / modeBindTexture.Height;
         string modeLabel = MRTDialog.ViewerMode + " ";
         float modeLabelRelLeft = modeBindTexture.Width * modeBindTextureScale + MarginH * 0.5f;

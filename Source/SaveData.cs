@@ -1,4 +1,5 @@
-using System.IO;
+using System;
+using System.Collections.Generic;
 
 namespace Celeste.Mod.MacroRoutingTool;
 
@@ -9,29 +10,32 @@ public class MRTSaveData : EverestModuleSaveData {
     [SettingIgnore]
     public int GraphViewerMode {get; set;} = (int)UI.GraphViewer.Modes.Disabled;
 
-    /// <summary>
-    /// Path to the YAML file containing the graph being worked on, relative to <see cref="MRTSettings.MRTDirectory"/>. 
-    /// </summary>
-    [SettingIgnore]
-    public string GraphPath {get; set;} = "";
+    public class OpenedItems {
+        /// <summary>
+        /// ID of the most recently opened <see cref="Data.Graph"/> that was assigned to the given <see cref="MapSide"/>. 
+        /// </summary>
+        public Guid Graph;
+        /// <summary>
+        /// ID of the most recently opened <see cref="Data.Route"/> that was assigned to the given <see cref="MapSide"/>. 
+        /// </summary>
+        public Guid Route;
+    }
 
     /// <summary>
-    /// Absolute path to the YAML file containing the graph being worked on.
+    /// List of most recently opened items for each map the user has ever viewed a <see cref="Data.Graph"/> for.
     /// </summary>
     [SettingIgnore]
-    [YamlDotNet.Serialization.YamlIgnore]
-    public string GraphPathAbsolute => Path.Join(MRTModule.Settings.MRTDirectory, GraphPath);
+    public Dictionary<Utils.MapSide, OpenedItems> Open {get; set;} = [];
 
     /// <summary>
-    /// Path to the YAML file containing the route being worked on, relative to <see cref="MRTSettings.MRTDirectory"/>. 
+    /// ID of the most recently viewed <see cref="Data.Graph"/> for each map the user has ever viewed a <see cref="Data.Graph"/> for.
     /// </summary>
     [SettingIgnore]
-    public string RoutePath {get; set;} = "";
+    public Dictionary<Utils.MapSide, Guid> LastGraphID {get; set;} = [];
 
     /// <summary>
-    /// Absolute path to the YAML file containing the route being worked on.
+    /// ID of the most recently viewed <see cref="Data.Route"/> for each <see cref="Data.Graph"/> the user has ever viewed a <see cref="Data.Route"/> for.  
     /// </summary>
     [SettingIgnore]
-    [YamlDotNet.Serialization.YamlIgnore]
-    public string RoutePathAbsolute => Path.Join(MRTModule.Settings.MRTDirectory, RoutePath);
+    public Dictionary<Guid, Guid> LastRouteID {get; set;} = [];
 }

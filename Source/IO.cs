@@ -43,8 +43,6 @@ public static partial class IO {
 
     public static class FileType {
         public const string Any = nameof(Any);
-        public const string Graph = nameof(Graph);
-        public const string Route = nameof(Route);
     }
     public class FileTypeInfo {
         public Type Type;
@@ -52,22 +50,22 @@ public static partial class IO {
     }
     public static Dictionary<string, FileTypeInfo> FileTypeInfos = new(){
         {FileType.Any, new(){Extension = "*"}},
-        {FileType.Graph, new(){Extension = "graph", Type = typeof(Graph)}},
-        {FileType.Route, new(){Extension = "route", Type = typeof(Route)}}
+        {nameof(Graph), new(){Extension = "graph", Type = typeof(Graph)}},
+        {nameof(Route), new(){Extension = "route", Type = typeof(Route)}}
     };
 
     public static bool Working = true;
 
     public static void Initialize() {
         Working = true;
-        if (!Path.Exists(MRTModule.Settings.MRTDirectoryAbsolute)) {
+        if (!Path.Exists(MRT.Settings.MRTDirectoryAbsolute)) {
             try {
-                Directory.CreateDirectory(MRTModule.Settings.MRTDirectoryAbsolute);
+                Directory.CreateDirectory(MRT.Settings.MRTDirectoryAbsolute);
             } catch (Exception e) {
                 Working = false;
                 Logger.Error("MacroRoutingTool/IO", $"{e.Message}\n{e.StackTrace}");
                 Engine.Commands.Open = true;
-                Engine.Commands.Log(string.Format(MRTDialog.IOFailCreateRoot, MRTDialog.ModTitle, MRTModule.Settings.MRTDirectory, e.Message), Color.Red);
+                Engine.Commands.Log(string.Format(MRTDialog.IOFailCreateRoot, MRTDialog.ModTitle, MRT.Settings.MRTDirectory, e.Message), Color.Red);
             }
         }
     }
@@ -75,7 +73,7 @@ public static partial class IO {
     public static bool TryLoadAll(string type = FileType.Any) {
         if (FileTypeInfos.TryGetValue(type, out FileTypeInfo searchTypeInfo)) {
             try {
-                string[] paths = Directory.GetFiles(MRTModule.Settings.MRTDirectoryAbsolute, $"*.{searchTypeInfo.Extension}.yaml", SearchOption.AllDirectories);
+                string[] paths = Directory.GetFiles(MRT.Settings.MRTDirectoryAbsolute, $"*.{searchTypeInfo.Extension}.yaml", SearchOption.AllDirectories);
                 string ioFails = "";
                 foreach (var path in paths) {
                     string yaml = null;
@@ -108,7 +106,7 @@ public static partial class IO {
                 Working = false;
                 Logger.Error("MacroRoutingTool/IO", $"{e.Message}\n{e.StackTrace}");
                 Engine.Commands.Open = true;
-                Engine.Commands.Log(string.Format(MRTDialog.IOFailOpenRoot, MRTDialog.ModTitle, MRTModule.Settings.MRTDirectory, e.Message), ErrorColor);
+                Engine.Commands.Log(string.Format(MRTDialog.IOFailOpenRoot, MRTDialog.ModTitle, MRT.Settings.MRTDirectory, e.Message), ErrorColor);
                 return false;
             }
         }

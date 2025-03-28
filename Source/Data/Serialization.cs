@@ -7,22 +7,43 @@ using YamlDotNet.Serialization;
 
 namespace Celeste.Mod.MacroRoutingTool.Data;
 
-public abstract class MRTExport<T> {
+/// <summary>
+/// Members of an MRT export that can be used without knowing a more specific type.
+/// </summary>
+public abstract class MRTExport {
     /// <summary>
     /// Unique ID for this item.
     /// </summary>
     public Guid ID = new();
-    
+
     /// <summary>
-    /// List of currently loaded items of this type.
+    /// Name displayed for this item.
     /// </summary>
-    public static List<T> List = [];
+    public string Name = "";
+
+    /// <summary>
+    /// Path to the file this item will be saved to.
+    /// </summary>
+    [YamlIgnore]
+    public string Path = "";
 
     /// <summary>
     /// Whether this item was loaded from a file (true) or created this session (false).
     /// </summary>
     [YamlIgnore]
     public bool FromLoad = false;
+}
+
+/// <summary>
+/// Members that all classes derived from <see cref="MRTExport"/> will have, but that require
+/// knowing a type more derived than <see cref="MRTExport"/> to use. 
+/// </summary>
+/// <typeparam name="T">A class, derived from <see cref="MRTExport"/>, of which members are needed.</typeparam>
+public abstract class MRTExport<T> : MRTExport {
+    /// <summary>
+    /// List of currently loaded items of this type.
+    /// </summary>
+    public static List<T> List = [];
     
     /// <summary>
     /// Tries to parse a given string of <seealso href="https://yaml.org/spec/1.2.2/#chapter-2-language-overview">YAML</seealso>-conformant
@@ -34,7 +55,7 @@ public abstract class MRTExport<T> {
               .GetField(nameof(MRTExport<Graph>.Reader), System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static)
               .GetValue(null)
             ).Deserialize<T>(yaml);
-            if (obj is MRTExport<T> ioObj) {
+            if (obj is MRTExport ioObj) {
                 ioObj.FromLoad = true;
             }
             return true;
@@ -44,16 +65,6 @@ public abstract class MRTExport<T> {
             return false;
         }
     }
-
-    /// <summary>
-    /// Path to the file this item will be saved to.
-    /// </summary>
-    public string Path = "";
-
-    /// <summary>
-    /// Name displayed for this item.
-    /// </summary>
-    public string Name = "";
 
     /// <summary>
     /// Parses <seealso href="https://yaml.org/spec/1.2.2/#chapter-2-language-overview">YAML</seealso>-conformant

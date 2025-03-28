@@ -280,7 +280,7 @@ public static class DebugMapTweaks {
                 }
             }
         }
-        if (MRTModule.Settings.Bind_DebugEntityMetadata.Check) {
+        if (MRT.Settings.Bind_DebugEntityMetadata.Check) {
             Draw.Rect((float)Math.Floor(camera.Left), (float)Math.Floor(camera.Top), camera.Right - camera.Left + 2f, camera.Bottom - camera.Top + 2f, Color.Black * 0.25f);
             foreach (var entityListsByType in EntitiesToRender) {
                 foreach (var entitiesByRoom in entityListsByType.Value) {
