@@ -130,9 +130,6 @@ public static partial class DebugMapHooks {
             Instruction getRoomControlsEnabled = ilcur.Prev;
             //run the hook's getter to decide whether that event happened
             ilcur.EmitLdsfld(evProp);
-            ilcur.EmitLdarg(0);
-            ilcur.EmitStfld(hookArgs);
-            ilcur.EmitLdsfld(evProp);
             ilcur.EmitCall(getControlHookValue);
             ilcur.EmitBrfalse(ifFalse);
             //if so, emit specified instructions
@@ -151,9 +148,6 @@ public static partial class DebugMapHooks {
         };
 
         void emitCheckRoomControlsEnabled() {
-            ilcur.EmitLdsfld(enabledField);
-            ilcur.EmitLdarg(0);
-            ilcur.EmitStfld(hookArgs);
             ilcur.EmitLdsfld(enabledField);
             ilcur.EmitCall(getControlHookValue);
         }
@@ -201,7 +195,6 @@ public static partial class DebugMapHooks {
         ilcur.Goto(mouseModeBlocks[MapEditor.MouseModes.Select].FirstInstruction, MoveType.AfterLabel);
         emitCheckRoomControlsEnabled();
         Instruction selectCheckRoomControls = ilcur.Prev;
-        ilcur.EmitLdarg0();
         ilcur.EmitDelegate(WhileSelecting);
         ilcur.Goto(selectCheckRoomControls, MoveType.After);
         ilcur.EmitBrfalse(startCheckReleaseSelect);
@@ -215,7 +208,6 @@ public static partial class DebugMapHooks {
         //hook every frame in move mode (vanilla: moves selected rooms)
         emitCheckRoomControlsEnabled();
         Instruction moveCheckRoomControls = ilcur.Prev;
-        ilcur.EmitLdarg0();
         ilcur.EmitDelegate(WhileMoving);
         Instruction callMovingHook = ilcur.Prev;
         ilcur.GotoNext(MoveType.Before, instr => instr.MatchCallvirt(typeof(MInput.MouseData).GetMethod("get_" + nameof(MInput.MouseData.CheckLeftButton))));
@@ -231,7 +223,6 @@ public static partial class DebugMapHooks {
         //hook every frame in resize mode (vanilla: resizes selected filler rooms)
         emitCheckRoomControlsEnabled();
         Instruction resizeCheckRoomControls = ilcur.Prev;
-        ilcur.EmitLdarg0();
         ilcur.EmitDelegate(WhileMoving);
         Instruction callResizingHook = ilcur.Prev;
         ilcur.GotoNext(MoveType.Before, instr => instr.MatchCallvirt(typeof(MInput.MouseData).GetMethod("get_" + nameof(MInput.MouseData.CheckLeftButton))));
@@ -251,18 +242,6 @@ public static partial class DebugMapHooks {
         ilcur.Goto(afterMouseInputs.Target, MoveType.AfterLabel);
         emitCheckRoomControlsEnabled();
         ilcur.EmitBrfalse(afterSetColor);
-      #endregion
-
-      #region input events
-        //assumptions:
-        //
-
-        ilcur.Index = ilctx.Instrs.Count;
-        ilcur.GotoPrev(MoveType.Before, instr => instr.MatchCall(typeof(Scene).GetMethod(nameof(Scene.Update))));
-        ilcur.GotoPrev(MoveType.Before, instr => instr.MatchLdarg0());
-
-        ilcur.EmitLdarg0();
-        ilcur.EmitDelegate(CallInputEvents);
       #endregion
     }
 

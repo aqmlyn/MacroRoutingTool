@@ -22,7 +22,7 @@ public abstract class MRTExport {
     public string Name = "";
 
     /// <summary>
-    /// Path to the file this item will be saved to.
+    /// Of the path to the file this item will be saved to, the fragment between <see cref="MRTSettings.MRTDirectoryAbsolute"/> and <c>.ext.yaml</c>.  
     /// </summary>
     [YamlIgnore]
     public string Path = "";
@@ -31,7 +31,7 @@ public abstract class MRTExport {
     /// Whether this item was loaded from a file (true) or created this session (false).
     /// </summary>
     [YamlIgnore]
-    public bool FromLoad = false;
+    public bool FromFile = false;
 }
 
 /// <summary>
@@ -56,7 +56,7 @@ public abstract class MRTExport<T> : MRTExport {
               .GetValue(null)
             ).Deserialize<T>(yaml);
             if (obj is MRTExport ioObj) {
-                ioObj.FromLoad = true;
+                ioObj.FromFile = true;
             }
             return true;
         } catch (Exception e) {

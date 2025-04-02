@@ -7,9 +7,21 @@ namespace Celeste.Mod.MacroRoutingTool;
 public static class Utils {
     public static int BoolToInt(bool val) => val ? 1 : 0;
 
-    public static TValue Ensure<TKey, TValue>(this Dictionary<TKey, TValue> dict, TKey key, TValue fallback = default) {
-        if (!dict.TryGetValue(key, out TValue result)) {result = fallback;}
-        return result;
+    public static TValue EnsureGet<TKey, TValue>(this Dictionary<TKey, TValue> dict, TKey key, TValue fallback = default) {
+        if (dict.TryGetValue(key, out TValue result)) {
+            return result;
+        } else {
+            dict.Add(key, fallback);
+            return fallback;
+        }
+    }
+
+    public static void EnsureSet<TKey, TValue>(this Dictionary<TKey, TValue> dict, TKey key, TValue value) {
+        if (dict.ContainsKey(key)) {
+            dict[key] = value;
+        } else {
+            dict.Add(key, value);
+        }
     }
 
     /// <summary>

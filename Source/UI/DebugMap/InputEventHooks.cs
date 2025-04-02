@@ -1,35 +1,11 @@
 using System;
-using System.Collections.Generic;
 using System.Reflection;
-using Celeste.Editor;
 using Microsoft.Xna.Framework.Input;
 using Monocle;
 
 namespace Celeste.Mod.MacroRoutingTool.UI;
 
 public static partial class DebugMapHooks {
-    public enum MouseEventTypes {
-        Press,
-        Release,
-        Move
-    }
-    public enum ButtonEventTypes {
-        Press,
-        Release,
-        Hold
-    }
-    public class Event {
-        public GetterEventProperty<bool> Condition = new(){Value = false};
-        public Action<MapEditor> Action;
-    }
-    public static Dictionary<string, Event> InputEvents = [];
-
-    public static void CallInputEvents(MapEditor debugMap) {
-        foreach (var inputEvent in InputEvents.Values) {
-            if (inputEvent.Condition.Value) {inputEvent.Action?.Invoke(debugMap);}
-        }
-    }
-
     public static Func<object, bool> ReadInputProperty(string name) {
         PropertyInfo modBindProperty = typeof(ButtonBinding).GetProperty(name);
         PropertyInfo baseBindProperty = typeof(VirtualButton).GetProperty(name);
@@ -48,6 +24,7 @@ public static partial class DebugMapHooks {
             if (input is Buttons button) {
                 return (bool)buttonMethod.Invoke(null, [button, 0.2f]);
             }
+            //TODO move error message to dialog
             throw new InvalidCastException($"{nameof(ReadInputProperty)} received an object of type {input.GetType()}. Expected {nameof(ButtonBinding)}, {nameof(VirtualButton)}, {nameof(Keys)}, or {nameof(Buttons)}.");
         };
     }

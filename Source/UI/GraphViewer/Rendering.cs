@@ -158,7 +158,7 @@ public static partial class GraphViewer {
         //TODO where possible, move image/text measuring to somewhere only called if Dialog.Language has changed since opening debug map.
         //should noticeably improve performance over measuring here, since this is called every frame
 
-        if ((Modes)MRT.SaveData.GraphViewerMode != Modes.Disabled) {
+        if (Mode != (int)Modes.Disabled) {
             //menu back
             Draw.Rect(0, HeadbarHeight, MenuWidth + MarginH * 2, Celeste.TargetHeight - HeadbarHeight, Color.Black * MenuBackOpacity);
             for (int i = 1; i < MarginH * 2; i++) {

@@ -26,7 +26,7 @@ public static partial class GraphViewer {
         graphNameDisplay.Left.Handler.Bind<string>(new());
         graphNameDisplay.Right.Handler.Bind<string>(new(){
             ValueGetter = () => Graph.Name,
-            CommitNewValue = name => Graph.Name = name
+            ValueParser = name => Graph.Name = name
         });
         menu.Add(graphNameDisplay);
 
@@ -36,7 +36,7 @@ public static partial class GraphViewer {
         graphPathDisplay.Left.Handler.Bind<string>(new());
         graphPathDisplay.Right.Handler.Bind<string>(new(){
             ValueGetter = () => Graph.Path,
-            CommitNewValue = path => {
+            ValueParser = path => {
                 Graph.Path = path;
                 ((MapEditor)Engine.Scene).Save();
                 return Graph.Path;

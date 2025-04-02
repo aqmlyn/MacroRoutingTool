@@ -40,7 +40,7 @@ public static partial class GraphViewer {
             if (CurrentMenu == null) return false;
             foreach (TextMenu.Item item in CurrentMenu.Items) {
                 if (item is ListItem listItem) {
-                    foreach (ListItem.SidePart side in new ListItem.SidePart[] {listItem.Left, listItem.Right}) {
+                    foreach (ListItem.Part side in new ListItem.Part[] {listItem.Left, listItem.Right}) {
                         if (side.Editable && ((TextMenuExt.TextBox)side.Element).Typing) {
                             return true;
                         }
@@ -73,8 +73,8 @@ public static partial class GraphViewer {
     /// The viewer mode that the graph viewer is currently in.
     /// </summary>
     public static int Mode {
-        get {return MRT.SaveData.GraphViewerMode;}
-        set {MRT.SaveData.GraphViewerMode = value;}
+        get {return MRT.Settings.GraphViewerMode;}
+        set {MRT.Settings.GraphViewerMode = value;}
     }
 
     /// <summary>
@@ -123,8 +123,8 @@ public static partial class GraphViewer {
         DebugMapHooks.AfterMapCtor += Load;
         DebugMapHooks.OnRenderBetweenRoomsAndCursor += RenderGraph;
         DebugMapHooks.Update += Update;
-        DebugMapHooks.RoomControlsEnabled.Event += DisableRoomControlsWhenViewerEnabled;
-        var onExitDebugMap = DebugMapHooks.OnExit.Ensure(typeof(MapEditor));
+        EnableInputListeners();
+        var onExitDebugMap = DebugMapHooks.OnExit.EnsureGet(typeof(MapEditor));
         onExitDebugMap += Unload;
     }
 
@@ -132,8 +132,8 @@ public static partial class GraphViewer {
         DebugMapHooks.AfterMapCtor -= Load;
         DebugMapHooks.OnRenderBetweenRoomsAndCursor -= RenderGraph;
         DebugMapHooks.Update -= Update;
-        DebugMapHooks.RoomControlsEnabled.Event -= DisableRoomControlsWhenViewerEnabled;
-        var onExitDebugMap = DebugMapHooks.OnExit.Ensure(typeof(MapEditor));
+        DisableInputListeners();
+        var onExitDebugMap = DebugMapHooks.OnExit.EnsureGet(typeof(MapEditor));
         onExitDebugMap -= Unload;
     }
 
@@ -238,7 +238,7 @@ public static partial class GraphViewer {
             //TODO AltSidesHelper support
             Field = typeof(GraphViewer).GetField(nameof(Graph), BindingFlags.Public | BindingFlags.Static),
             CheckID = graph => Utils.MapSide.TryParse(UIHelpers.GetAreaKey(DebugMap), out var sideInfo)
-                && MRT.SaveData.LastGraphID.TryGetValue(sideInfo, out Guid id)
+                && MRT.Settings.LastGraphID.TryGetValue(sideInfo, out Guid id)
                 && graph.ID == id,
             IsSuitable = graph => {
                 AreaKey mapInfo = UIHelpers.GetAreaKey(DebugMap);
@@ -252,7 +252,7 @@ public static partial class GraphViewer {
         })},
         {nameof(Data.Route), FirstLoadHandler.Bind<Route>(new(){
             Field = typeof(GraphViewer).GetField(nameof(Route), BindingFlags.Public | BindingFlags.Static),
-            CheckID = route => MRT.SaveData.LastRouteID.TryGetValue(Graph.ID, out Guid id) && route.ID == id,
+            CheckID = route => MRT.Settings.LastRouteID.TryGetValue(Graph.ID, out Guid id) && route.ID == id,
             IsSuitable = route => route.GraphID == Graph.ID,
             ConfigureNew = route => {
                 route.GraphID = Graph.ID;
@@ -330,6 +330,4 @@ public static partial class GraphViewer {
             CurrentMenu.Focused = !CurrentMenu.Focused;
         }
     }
-
-    public static void DisableRoomControlsWhenViewerEnabled(ref bool val, MapEditor debugMap) {val &= Mode == (int)Modes.Disabled;}
 }
