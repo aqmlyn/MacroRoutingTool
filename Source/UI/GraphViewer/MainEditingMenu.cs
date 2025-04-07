@@ -1,62 +1,47 @@
-using Microsoft.Xna.Framework;
-
 namespace Celeste.Mod.MacroRoutingTool.UI;
 
 public static partial class GraphViewer {
-    public static Menu MainEditingMenu = new() {
+    public static MenuCreator MainEditingMenu = new() {
         InitialFor = (int)Modes.Editing,
-        Creator = () => {
+        OnCreate = creator => {
             TextMenu menu = NewMainMenu();
+            creator.CreatorFor = menu;
+
             MenuDataContainer dataContainer = menu.EnsureDataContainer();
             HeaderScaleData headerScaleData = new(){
                 Scale = 0.7f
             };
 
             //Edit Weights
-            TextMenu.Button editWeightsButton = new(MRTDialog.GraphMenuEditWeights){Container = menu};
-            menu.Add(editWeightsButton);
+            TextMenu.Button editWeightsButton = new(MRTDialog.GraphMenuEditWeights);
 
             //Add Point
-            TextMenu.Button addPointButton = new(MRTDialog.GraphMenuAddPoint){Container = menu};
-            menu.Add(addPointButton);
+            TextMenu.Button addPointButton = new(MRTDialog.GraphMenuAddPoint) {
+                OnPressed = AddPoint
+            };
 
             //Add Connection
-            TextMenu.Button addConnectionButton = new(MRTDialog.GraphMenuAddConnection){Container = menu};
-            menu.Add(addConnectionButton);
+            TextMenu.Button addConnectionButton = new(MRTDialog.GraphMenuAddConnection);
 
             //SELECTION
-            TextMenu.Header selectionHeader = new(MRTDialog.SelectionHeader){Container = menu};
+            TextMenu.Header selectionHeader = new(MRTDialog.SelectionHeader);
             dataContainer.ItemData.Add(selectionHeader, headerScaleData);
-            menu.Add(selectionHeader);
 
-            //___ selected
-            ListItem selectionCount = new() {
-                Container = menu,
-                OnAdded = item => {
-                    TextMenuUtils.TextElement elem = (TextMenuUtils.TextElement)item.Left.Element;
-                    elem.Justify = new Vector2(0.5f, 0.5f);
-                    item.Left.Value = 0;
-                    item.Left.Handler.Bind<int>(new() {
-                        ValueToString = val => {
-                            item.Visible = true;
-                            if (val == 0) {
-                                elem.Color = Color.LightGray;
-                                return MRTDialog.SelectedNothing;
-                            }
-                            if (val > 1) {
-                                elem.Color = Color.Aqua;
-                                return string.Format(SelectionHas == SelectionContents.Points
-                                ? MRTDialog.SelectedMultiplePoints : MRTDialog.SelectedMultipleConnections, val);
-                            }
-                            item.Visible = false;
-                            return "";
-                        }
-                    });
-                }
-            };
-            menu.Add(selectionCount);
-
-            return menu;
-        }
+            return [
+                editWeightsButton,
+                addPointButton,
+                addConnectionButton,
+                selectionHeader
+            ];
+        },
+        AfterCreate = creator => EditorSelectionChooser.Create(creator.CreatorFor)
     };
+
+    public static void AddPoint() {
+        Graph.Points.Add(new() {
+            Image = UIHelpers.AtlasPaths.Gui + "dot", //TODO allow this to be changed, ideally with like an image picker
+            X = (int)DebugMap.mousePosition.X,
+            Y = (int)DebugMap.mousePosition.Y
+        });
+    }
 }

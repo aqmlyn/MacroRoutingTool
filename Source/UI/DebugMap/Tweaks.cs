@@ -78,7 +78,7 @@ public static class DebugMapTweaks {
     public static float HoverBackOpacity = 0.6f;
     
     public class HoverTextItem {
-        public TextMenuUtils.TextElement Element = new();
+        public UIHelpers.TextElement Element = new();
         public GetterEventProperty<string> Text = new();
     }
 
@@ -95,7 +95,7 @@ public static class DebugMapTweaks {
     }
 
     public static void DrawHoverText(MapEditor debugMap, Camera camera) {
-        List<TextMenuUtils.TextElement> visibleTexts = [];
+        List<UIHelpers.TextElement> visibleTexts = [];
         foreach (HoverTextItem item in HoverText.Values) {
             item.Element.Text = item.Text.Value;
             if (item.Element.Text != "") {visibleTexts.Add(item.Element);}
@@ -116,7 +116,7 @@ public static class DebugMapTweaks {
                 (ActiveFont.LineHeight * HoverTextScale * visibleCount + HoverTextVSpacing * visibleCount + HoverTextHSpacing * 2) / camera.Zoom / WhiteRect.Width
             )
         );
-        foreach (TextMenuUtils.TextElement elem in visibleTexts) {
+        foreach (UIHelpers.TextElement elem in visibleTexts) {
             elem.Position = drawPos;
             elem.Scale = Vector2.One * HoverTextScale / camera.Zoom;
             elem.BorderThickness = HoverTextBorderThickness / camera.Zoom;

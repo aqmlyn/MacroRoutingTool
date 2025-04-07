@@ -25,7 +25,7 @@ public class ListItem : TextMenu.Item {
         /// The object used to display this part. Currently, it may be:
         /// <list type="bullet">
         /// <item>a <see cref="TextMenuExt.TextBox"/> if this part is <see cref="Editable"/>.</item>  
-        /// <item>a <see cref="TextMenuUtils.TextElement"/> if this part is not <see cref="Editable"/>.</item>
+        /// <item>a <see cref="UIHelpers.TextElement"/> if this part is not <see cref="Editable"/>.</item>
         /// </list>
         /// </summary>
         public object Element = new();
@@ -209,7 +209,7 @@ public class ListItem : TextMenu.Item {
                 };
                 side.Element = textbox;
             } else {
-                TextMenuUtils.TextElement text = new() {
+                UIHelpers.TextElement text = new() {
                     Container = this,
                     BorderThickness = 2f,
                     Justify = new Vector2(side == Right ? 1f : 0f, 0.5f)
@@ -232,7 +232,7 @@ public class ListItem : TextMenu.Item {
         OnAdded?.Invoke(this);
         foreach (Part part in new Part[]{Left, Right}) {
             if (!part.Editable) {
-                part.IdleColor = ((TextMenuUtils.TextElement)part.Element).Color;
+                part.IdleColor = ((UIHelpers.TextElement)part.Element).Color;
             }
         }
     }
@@ -264,7 +264,7 @@ public class ListItem : TextMenu.Item {
     /// Returns the scale applied to each <see cref="Part"/> in this <see cref="ListItem"/> if no parts are <see cref="Part.Editable"/>. 
     /// </summary>
     public float UneditableScale() {
-        return Container.TryGetData(out MultiDisplayData data) ? Math.Min(data.ItemScaleMult, Container.Width / (ActiveFont.Measure(((TextMenuUtils.TextElement)Left.Element).Text).X + ActiveFont.Measure(((TextMenuUtils.TextElement)Right.Element).Text).X + MinSeparation)) : 1f;
+        return Container.TryGetData(out MultiDisplayData data) ? Math.Min(data.ItemScaleMult, Container.Width / (ActiveFont.Measure(((UIHelpers.TextElement)Left.Element).Text).X + ActiveFont.Measure(((UIHelpers.TextElement)Right.Element).Text).X + MinSeparation)) : 1f;
     }
 
     public override float Height()
@@ -283,8 +283,8 @@ public class ListItem : TextMenu.Item {
         //i think it's simpler to offset the justify value to account for this, not the position
 
         if (!Left.Editable && !Right.Editable) {
-            TextMenuUtils.TextElement leftelem = (TextMenuUtils.TextElement)Left.Element;
-            TextMenuUtils.TextElement rightelem = (TextMenuUtils.TextElement)Right.Element;
+            UIHelpers.TextElement leftelem = (UIHelpers.TextElement)Left.Element;
+            UIHelpers.TextElement rightelem = (UIHelpers.TextElement)Right.Element;
             leftelem.Scale = rightelem.Scale = Vector2.One * UneditableScale();
             leftelem.Position = position + (dimensions * (leftelem.Justify + justifyOffset));
             leftelem.Render();
@@ -303,7 +303,7 @@ public class ListItem : TextMenu.Item {
             leftelem.TextScale = Vector2.One * Math.Min(scale * 0.9f, adjustedScale);
             leftelem.Render(new Vector2(position.X, position.Y - leftelem.Height() / 2f), false);
         } else {
-            TextMenuUtils.TextElement leftelem = (TextMenuUtils.TextElement)Left.Element;
+            UIHelpers.TextElement leftelem = (UIHelpers.TextElement)Left.Element;
             leftelem.Scale = Vector2.One * Math.Min(scale, Container.Width * LeftWidthPortion - MinSeparation / Container.Width / 2);
             leftelem.Position = position + (dimensions * (leftelem.Justify + justifyOffset));
             leftelem.Color = highlighted ? Container.HighlightColor : Left.IdleColor;
@@ -317,7 +317,7 @@ public class ListItem : TextMenu.Item {
             rightelem.TextScale = Vector2.One * Math.Min(scale * 0.9f, adjustedScale);
             rightelem.Render(new Vector2(position.X + Container.Width * LeftWidthPortion + MinSeparation / 2, position.Y - rightelem.Height() / 2f), false);
         } else {
-            TextMenuUtils.TextElement rightelem = (TextMenuUtils.TextElement)Right.Element;
+            UIHelpers.TextElement rightelem = (UIHelpers.TextElement)Right.Element;
             rightelem.Scale = Vector2.One * Math.Min(scale, Container.Width * (1f - LeftWidthPortion) - MinSeparation / Container.Width / 2);
             rightelem.Position = position + (dimensions * (rightelem.Justify + justifyOffset));
             rightelem.Color = highlighted ? Container.HighlightColor : Right.IdleColor;
@@ -356,7 +356,7 @@ public class ListItem : TextMenu.Item {
                     elem.SetText(side.ValueString);
                 }
             } else {
-                TextMenuUtils.TextElement elem = (TextMenuUtils.TextElement)side.Element;
+                UIHelpers.TextElement elem = (UIHelpers.TextElement)side.Element;
                 elem.Text = side.ValueString;
             }
         }

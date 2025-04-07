@@ -104,7 +104,7 @@ public static partial class GraphViewer {
     /// <summary>
     /// List of items currently selected in the graph viewer.
     /// </summary>
-    public static List<Traversable> Selection;
+    public static List<Traversable> Selection = [];
     /// <summary>
     /// The type of item currently in the <see cref="Selection"/>. 
     /// </summary>
@@ -221,7 +221,7 @@ public static partial class GraphViewer {
             T obj = new(){
                 ID = id,
                 Name = MRTDialog.GraphDefaultName,
-                Path = $"{id}.{IO.FileTypeInfos[typeof(T).Name].Extension}.yaml"
+                Path = id.ToString()
             };
             ConfigureNew?.Invoke(obj);
             return obj;

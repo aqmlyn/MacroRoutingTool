@@ -47,6 +47,7 @@ public static partial class GraphViewer {
     //TODO allow changing point stuff
     public static float PointNameScale = 0.5f;
     public static Color PointColor = Color.White;
+    public static float PointNameMargin = 1.5f;
 
     /// <summary>
     /// Render all parts of the graph viewer that stay at a fixed position on the screen.
@@ -210,13 +211,12 @@ public static partial class GraphViewer {
     public static void RenderGraph(MapEditor debugMap, Camera camera) {
         if (Graph != null) {
             foreach (Data.Point point in Graph.Points) {
-                Vector2 position = new(point.X, point.Y);
-                if (UIHelpers.TryGetTexture(point.Image, out MTexture texture)) {
-                    texture.DrawOutlineCentered(position, PointColor, texture.Atlas == GFX.Game ? 6f : 1f);
-                }
-                if (point.Name != "") {
-                    ActiveFont.DrawOutline(point.Name, position, new Vector2(0.5f, 0.5f), Vector2.One * PointNameScale, PointColor, 2f, Color.Black);
-                }
+                //scale: texture.Atlas == GFX.Game ? Settings.Instance.WindowScale : 1f
+                point.TextElement.Camera = point.TextureElement.Camera = camera;
+                point.TextElement.Text = string.IsNullOrWhiteSpace(point.Name) ? (Graph.Points.IndexOf(point) + 1).ToString() : point.Name;
+                point.TextElement.Position.Y = point.TextureElement.Position.Y - (((point.TextureElement.Texture?.Height ?? 0) / 2 * point.TextureElement.Scale.Y) - PointNameMargin) / camera.Zoom;
+                point.TextureElement.Render();
+                point.TextElement.Render();
             }
         }
     }

@@ -118,9 +118,18 @@ public static partial class IO {
         string yaml = null;
         try {
             yaml = File.ReadAllText(path);
-            return (bool)typeof(T)
+            if ((bool)typeof(T)
                 .GetMethod(nameof(MRTExport<Graph>.TryParse), BindingFlags.Public | BindingFlags.Static)
-                .Invoke(null, [yaml, item]);
+                .Invoke(null, [yaml, item])
+            ) {
+                if (item is MRTExport openedItem) {
+                    if (FileTypeInfos.TryGetValue(typeof(T).Name, out var info)) {
+                        openedItem.Path = Path.GetFileName(path)[MRT.Settings.MRTDirectoryAbsolute.Length..^$".{info.Extension}.yaml".Length];
+                    }
+                }
+                return true;
+            }
+            return false;
         } catch (FileNotFoundException) {
             string typetext = MRTExtension(path);
             Logger.Info("MacroRoutingTool/IO", string.Format(MRTDialog.IORelocate, typetext, id));

@@ -1,5 +1,8 @@
 using System.Collections.Generic;
 using Celeste.Mod.MacroRoutingTool.UI;
+using Microsoft.Xna.Framework;
+using Monocle;
+using YamlDotNet.Serialization;
 
 namespace Celeste.Mod.MacroRoutingTool.Data;
 
@@ -34,19 +37,64 @@ public class Point : Traversable {
     /// </summary>
     public string Name;
 
+    [YamlIgnore]
+    public int _x;
     /// <summary>
     /// X position at which this point is displayed.
     /// </summary>
-    public int X;
+    public int X {
+        get => _x;
+        set {
+            _x = value;
+            TextElement.Position.X = value;
+            TextureElement.Position.X = value;
+        }
+    }
 
+    [YamlIgnore]
+    public int _y;
     /// <summary>
     /// Y position at which this point is displayed.
     /// </summary>
-    public int Y;
+    public int Y {
+        get => _y;
+        set {
+            _y = value;
+            TextElement.Position.Y = value;
+            TextureElement.Position.Y = value;
+        }
+    }
 
+    [YamlIgnore]
+    public string _image;
     /// <summary>
     /// Path to the image displayed when this point is shown.
     /// </summary>
-    public string Image = UIHelpers.AtlasPaths.Gui + "dot"; //TODO allow this to be changed, ideally with like an image picker
+    public string Image {
+        get => _image;
+        set {
+            _image = value;
+            if (UIHelpers.TryGetTexture(value, out MTexture texture)) {
+                TextureElement.Texture = texture;
+                TextureElement.Scale = Vector2.One * (TextureElement.Texture.Atlas == GFX.Game ? 6f : 1f);
+            } else {
+                //TODO log warning
+            }
+        }
+    }
+
+    [YamlIgnore]
+    public UIHelpers.TextureElement TextureElement = new() {
+        Justify = Vector2.One * 0.5f,
+        IgnoreCameraZoom = true,
+        BorderThickness = 3f
+    };
+
+    [YamlIgnore]
+    public UIHelpers.TextElement TextElement = new() {
+        Justify = new Vector2(0.5f, 1f),
+        IgnoreCameraZoom = true,
+        BorderThickness = 3f
+    };
   #endregion
 }

@@ -97,8 +97,68 @@ public static class UIHelpers {
     public static AreaKey GetAreaKey(MapEditor debugMap = null) => (AreaKey)AreaGetter.GetValue(debugMap ?? (MapEditor)Engine.Scene);
     public static AreaData GetAreaData(MapEditor debugMap = null) => AreaData.Get(GetAreaKey(debugMap));
 
-    /// <summary>
-    /// Whether typing right now will affect the text in a textbox.
-    /// </summary>
-    public static bool TextEditing;
+    public class TextureElement {
+        public MTexture Texture = null;
+        public Vector2 Position = Vector2.Zero;
+        public Vector2 Justify = Vector2.Zero;
+        public Color Color = Color.White;
+        public Vector2 Scale = Vector2.One;
+        public float Rotation = 0f;
+        public SpriteEffects Flip = SpriteEffects.None;
+        public float? BorderThickness;
+        public Color BorderColor = Color.Black;
+
+        public bool IgnoreCameraZoom = false;
+        public Camera Camera = null;
+
+        public void Render() {
+            if (Texture == null) {return;}
+            //copied from vanilla MTexture.DrawOutlineJustified decomp and adjusted to take outline arguments into account
+            float scaleFix = Texture.ScaleFix;
+            Vector2 scale = Scale * scaleFix;
+            if (IgnoreCameraZoom) {scale /= Camera.Zoom;}
+            Rectangle clipRect = Texture.ClipRect;
+            Vector2 origin = (new Vector2(Texture.Width * Justify.X, Texture.Height * Justify.Y) - Texture.DrawOffset) / scaleFix;
+            if (BorderThickness != null) {
+                float outlineWidth = (float)BorderThickness;
+                if (IgnoreCameraZoom) {outlineWidth /= Camera.Zoom;}
+                for (float i = -1; i <= 1; i++) {
+                    for (float j = -1; j <= 1; j ++) {
+                        if (i != 0 || j != 0) {
+                            Draw.SpriteBatch.Draw(Texture.Texture.Texture_Safe, Position + new Vector2(i * outlineWidth, j * outlineWidth), clipRect, BorderColor, Rotation, origin, scale, Flip, 0f);
+                        }
+                    }
+                }
+            }
+            Draw.SpriteBatch.Draw(Texture.Texture.Texture_Safe, Position, clipRect, Color, Rotation, origin, scale, Flip, 0f);
+        }
+    }
+
+    public class TextElement {
+        public TextMenu.Item Container = null;
+        public string Text = "";
+        public Vector2 Position = Vector2.Zero;
+        public Vector2 Justify = Vector2.Zero;
+        public Vector2 Scale = Vector2.One;
+        public Color Color = Color.White;
+        public float? BorderThickness = null;
+        public Color BorderColor = Color.Black;
+        public float? DropShadowOffset = null;
+        public Color DropShadowColor = Color.DarkSlateBlue;
+
+        public bool IgnoreCameraZoom = false;
+        public Camera Camera = null;
+
+        public void Render() {
+            Vector2 scale = new(Scale.X, Scale.Y);
+            if (IgnoreCameraZoom) {scale /= Camera.Zoom;}
+            if (DropShadowOffset != null) {
+                ActiveFont.DrawEdgeOutline(Text, Position, Justify, scale, Color, (float)DropShadowOffset, DropShadowColor, (BorderThickness ?? 0) / (IgnoreCameraZoom ? Camera.Zoom : 1f), BorderColor);
+            } else if (BorderThickness != null) {
+                ActiveFont.DrawOutline(Text, Position, Justify, scale, Color, (float)BorderThickness / (IgnoreCameraZoom ? Camera.Zoom : 1f), BorderColor);
+            } else {
+                ActiveFont.Draw(Text, Position, Justify, scale, Color);
+            }
+        }
+    }
 }

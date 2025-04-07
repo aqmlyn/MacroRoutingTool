@@ -1,7 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using Microsoft.Xna.Framework;
 
 namespace Celeste.Mod.MacroRoutingTool.UI;
 
@@ -50,29 +49,6 @@ public static class TextMenuUtils {
     /// <typeparam name="T">The object type to check for.</typeparam>
     /// <param name="fallback">Optional, value to assign to <c>result</c> if no entry is found.</param>
     public static bool DataContains<T>(this TextMenu menu, T fallback = default) => menu.TryGetData(out _, fallback);
-
-    public class TextElement {
-        public TextMenu.Item Container = null;
-        public string Text = "";
-        public Vector2 Position = Vector2.Zero;
-        public Vector2 Justify = Vector2.Zero;
-        public Vector2 Scale = Vector2.One;
-        public Color Color = Color.White;
-        public float? BorderThickness = null;
-        public Color BorderColor = Color.Black;
-        public float? DropShadowOffset = null;
-        public Color DropShadowColor = Color.DarkSlateBlue;
-
-        public void Render() {
-            if (DropShadowOffset != null) {
-                ActiveFont.DrawEdgeOutline(Text, Position, Justify, Scale, Color, (float)DropShadowOffset, DropShadowColor, BorderThickness ?? 0, BorderColor);
-            } else if (BorderThickness != null) {
-                ActiveFont.DrawOutline(Text, Position, Justify, Scale, Color, (float)BorderThickness, BorderColor);
-            } else {
-                ActiveFont.Draw(Text, Position, Justify, Scale, Color);
-            }
-        }
-    }
 
     public static MethodInfo TextBoxSetText = typeof(TextMenuExt.TextBox).GetMethod("set_" + nameof(TextMenuExt.TextBox.Text), BindingFlags.NonPublic | BindingFlags.Instance);
     public static void SetText(this TextMenuExt.TextBox textBox, string text) {
