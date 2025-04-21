@@ -38,7 +38,13 @@ public abstract class Traversable {
     /// If so, returns the distance from the cursor to this item, intended so that if the user is hovering over multiple items and
     /// isn't multi-selecting, only the closest item to the cursor will be hovered.
     /// </summary>
-    public abstract float HoverCheck();
+    public abstract float HoverPointCheck();
+
+    /// <summary>
+    /// Returns whether this item is currently inside any part of the selection rectangle
+    /// created by left clicking and dragging in the graph viewer.
+    /// </summary>
+    public abstract bool HoverRectCheck();
 }
 
 public class Graph : MRTExport<Graph> {

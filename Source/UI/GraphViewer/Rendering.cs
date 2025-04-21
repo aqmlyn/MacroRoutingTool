@@ -53,6 +53,7 @@ public static partial class GraphViewer {
     public static float PointNameScale = 0.5f;
     public static Color PointColor = Color.White;
     public static Color PointHoveredColor = Color.Orange;
+    public static Color PointSelectedColor = Color.Aqua;
     public static float PointNameMargin = 1.5f;
 
     /// <summary>
@@ -229,7 +230,7 @@ public static partial class GraphViewer {
             foreach (Data.Point point in Graph.Points) {
                 //scale: texture.Atlas == GFX.Game ? Settings.Instance.WindowScale : 1f
                 point.TextElement.Camera = point.TextureElement.Camera = camera;
-                point.TextElement.Color = point.TextureElement.Color = Hovers.Contains(point) ? PointHoveredColor : PointColor;
+                point.TextElement.Color = point.TextureElement.Color = Hovers.Contains(point) ? PointHoveredColor : Selection.Contains(point) ? PointSelectedColor : PointColor;
                 point.TextElement.Text = string.IsNullOrWhiteSpace(point.Name) ? (Graph.Points.IndexOf(point) + 1).ToString() : point.Name;
                 point.TextElement.Position.Y = point.TextureElement.Position.Y - (((point.TextureElement.Texture?.Height ?? 0) / 2 * point.TextureElement.Scale.Y) - PointNameMargin) / camera.Zoom;
                 point.TextureElement.Render();

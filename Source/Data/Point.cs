@@ -98,11 +98,16 @@ public class Point : Traversable {
         BorderThickness = 3f
     };
 
-    public override float HoverCheck()
+    public override float HoverPointCheck()
     {
         Camera camera = (Camera)typeof(MapEditor).GetField(nameof(MapEditor.Camera), System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static).GetValue(GraphViewer.DebugMap);
         float distance = (GraphViewer.DebugMap.mousePosition - new Vector2(X, Y)).Length();
         return distance <= GraphViewer.PointHoverDistance / camera.Zoom ? distance : float.NaN;
+    }
+
+    public override bool HoverRectCheck()
+    {
+        return Collide.RectToPoint(GraphViewer.DebugMap.GetMouseRect(GraphViewer.DebugMap.mouseDragStart, GraphViewer.DebugMap.mousePosition), new Vector2(X, Y));
     }
   #endregion
 }

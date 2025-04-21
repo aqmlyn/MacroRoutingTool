@@ -36,7 +36,7 @@ public class Connection : Traversable {
 
     //TODO line colors, styles (e.g. dashed vs solid), shapes (e.g. points to curve through)
 
-    public override float HoverCheck()
+    public override float HoverPointCheck()
     {
         if (!Visible || GraphViewer.Graph.Connections.Contains(this)) {return float.NaN;}
         Camera camera = (Camera)typeof(MapEditor).GetField(nameof(MapEditor.Camera), System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static).GetValue(GraphViewer.DebugMap);
@@ -44,6 +44,12 @@ public class Connection : Traversable {
         Point to = GraphViewer.Graph.Points[(int)To];
         float distance = MInput.Mouse.Position.DistanceToLineSegment(new Vector2(from.X, from.Y).OnCamera(camera), new Vector2(to.X, to.Y).OnCamera(camera));
         return distance > GraphViewer.ConnectionHoverDistance ? float.NaN : distance;
+    }
+
+    public override bool HoverRectCheck()
+    {
+        //TODO
+        return false;
     }
   #endregion
 

@@ -211,9 +211,11 @@ public static partial class DebugMapHooks {
         ilcur.Goto(mouseModeBlocks[MapEditor.MouseModes.Select].FirstInstruction, MoveType.AfterLabel);
         emitCheckRoomControlsEnabled();
         Instruction selectCheckRoomControls = ilcur.Prev;
+        ILLabel origSelectCode = ilcur.MarkLabel(ilcur.Next);
         emitRaiseEvent(nameof(WhileSelecting));
+        ilcur.EmitBr(startCheckReleaseSelect);
         ilcur.Goto(selectCheckRoomControls, MoveType.After);
-        ilcur.EmitBrfalse(startCheckReleaseSelect);
+        ilcur.EmitBrtrue(origSelectCode);
         //hook releasing left mouse in select mode (vanilla: either merges or replaces the selection list with the rooms in the selection rectangle)
         ilcur.Goto(startCheckReleaseSelect.Target);
         ilcur.GotoNext(MoveType.After, instr => instr.MatchBrtrue(out _) || instr.MatchBrfalse(out _));
