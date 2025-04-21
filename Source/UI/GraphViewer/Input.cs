@@ -4,11 +4,13 @@ public static partial class GraphViewer {
     public static void EnableInputListeners() {
         DebugMapHooks.RoomControlsEnabled.Event += DisableRoomControlsWhenViewerEnabled;
         DebugMapTweaks.MetadataBindEnabled.Event += DisableMetadataWhenViewerMenuFocused;
+        DebugMapHooks.WhileHovering += UpdateHover;
     }
 
     public static void DisableInputListeners() {
         DebugMapHooks.RoomControlsEnabled.Event -= DisableRoomControlsWhenViewerEnabled;
         DebugMapTweaks.MetadataBindEnabled.Event -= DisableMetadataWhenViewerMenuFocused;
+        DebugMapHooks.WhileHovering -= UpdateHover;
     }
 
     public static void DisableRoomControlsWhenViewerEnabled(ref bool val) {val &= Mode == (int)Modes.Disabled;}

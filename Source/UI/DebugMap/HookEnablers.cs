@@ -152,6 +152,12 @@ public static partial class DebugMapHooks {
             ilcur.EmitCall(getControlHookValue);
         }
 
+        MethodInfo invokeAction = typeof(Action).GetMethod(nameof(Action.Invoke));
+        void emitRaiseEvent(string eventName) {
+            ilcur.EmitLdsfld(typeof(DebugMapHooks).GetField(eventName, BindingFlags.Public | BindingFlags.Static));
+            ilcur.EmitCall(invokeAction);
+        }
+
         //hover mode:
         ilcur.Goto(mouseModeBlocks[MapEditor.MouseModes.Hover].FirstInstruction, MoveType.Before);
         //hook ctrl+lclick (vanilla: toggles whether rooms under the cursor are selected)
@@ -186,6 +192,16 @@ public static partial class DebugMapHooks {
         ilcur.MoveAfterLabels();
         emitCheckRoomControlsEnabled();
         ilcur.EmitBrfalse(afterMouseInputs);
+        //hook every frame in hover mode when not doing an action above
+        ilcur.GotoNext(MoveType.After, instr => instr.MatchCall(typeof(MInput).GetMethod("get_" + nameof(MInput.Keyboard))), instr => instr.MatchLdcI4((int)Keys.Space));
+        ilcur.GotoNext(MoveType.After, instr => instr.MatchBrtrue(out _) || instr.MatchBrfalse(out _));
+        emitCheckRoomControlsEnabled();
+        Instruction panOverrideCheckRoomControls = ilcur.Prev;
+        emitRaiseEvent(nameof(WhileHovering));
+        ilcur.EmitBr(afterMouseInputs);
+        ILLabel panOverrideOrig = ilcur.MarkLabel(ilcur.Next);
+        ilcur.Goto(panOverrideCheckRoomControls, MoveType.After);
+        ilcur.EmitBrtrue(panOverrideOrig);
         //select mode:
         ilcur.Goto(mouseModeBlocks[MapEditor.MouseModes.Select].FirstInstruction, MoveType.AfterLabel);
         //hook every frame in select mode (vanilla: makes rooms in the selection rectangle appear hovered)
@@ -195,7 +211,7 @@ public static partial class DebugMapHooks {
         ilcur.Goto(mouseModeBlocks[MapEditor.MouseModes.Select].FirstInstruction, MoveType.AfterLabel);
         emitCheckRoomControlsEnabled();
         Instruction selectCheckRoomControls = ilcur.Prev;
-        ilcur.EmitDelegate(WhileSelecting);
+        emitRaiseEvent(nameof(WhileSelecting));
         ilcur.Goto(selectCheckRoomControls, MoveType.After);
         ilcur.EmitBrfalse(startCheckReleaseSelect);
         //hook releasing left mouse in select mode (vanilla: either merges or replaces the selection list with the rooms in the selection rectangle)
@@ -208,7 +224,7 @@ public static partial class DebugMapHooks {
         //hook every frame in move mode (vanilla: moves selected rooms)
         emitCheckRoomControlsEnabled();
         Instruction moveCheckRoomControls = ilcur.Prev;
-        ilcur.EmitDelegate(WhileMoving);
+        emitRaiseEvent(nameof(WhileMoving));
         Instruction callMovingHook = ilcur.Prev;
         ilcur.GotoNext(MoveType.Before, instr => instr.MatchCallvirt(typeof(MInput.MouseData).GetMethod("get_" + nameof(MInput.MouseData.CheckLeftButton))));
         ilcur.GotoPrev(MoveType.After, instr => instr.MatchCall(typeof(MInput).GetMethod("get_" + nameof(MInput.Mouse))));
@@ -223,7 +239,7 @@ public static partial class DebugMapHooks {
         //hook every frame in resize mode (vanilla: resizes selected filler rooms)
         emitCheckRoomControlsEnabled();
         Instruction resizeCheckRoomControls = ilcur.Prev;
-        ilcur.EmitDelegate(WhileMoving);
+        emitRaiseEvent(nameof(WhileResizing));
         Instruction callResizingHook = ilcur.Prev;
         ilcur.GotoNext(MoveType.Before, instr => instr.MatchCallvirt(typeof(MInput.MouseData).GetMethod("get_" + nameof(MInput.MouseData.CheckLeftButton))));
         ilcur.GotoPrev(MoveType.After, instr => instr.MatchCall(typeof(MInput).GetMethod("get_" + nameof(MInput.Mouse))));
@@ -302,12 +318,12 @@ public static partial class DebugMapHooks {
 
         //find the position just after the foreach block
         ilcur.GotoNext(MoveType.After, instr => instr.MatchEndfinally());
-        ilcur.GotoNext(MoveType.After, instr => instr.MatchLdarg0());
+        ilcur.MoveAfterLabels();
 
       #region between rooms and cursor
+        ilcur.EmitLdarg0();
         ilcur.EmitLdsfld(typeof(MapEditor).GetField("Camera", BindingFlags.NonPublic | BindingFlags.Static));
         ilcur.EmitCall(typeof(DebugMapHooks).GetMethod(nameof(RenderBetweenRoomsAndCursor)));
-        ilcur.EmitLdarg0();
       #endregion
 
         //find the start of the last SpriteBatch

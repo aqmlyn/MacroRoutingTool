@@ -3,6 +3,7 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Monocle;
 using MonoMod.Cil;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -160,5 +161,31 @@ public static class UIHelpers {
                 ActiveFont.Draw(Text, Position, Justify, scale, Color);
             }
         }
+    }
+
+    public static Vector2 OnCamera(this Vector2 self, Camera camera) {
+        return new(camera.Left + (camera.Origin.X + self.X) / camera.Zoom, camera.Top + (camera.Origin.Y + self.Y) / camera.Zoom);
+    }
+
+    public static float DistanceToLineSegment(this Vector2 self, Vector2 p1, Vector2 p2) {
+        float angleFrom1to2 = (p2 - p1).Angle();
+        float angleFrom2to1 = (float)(angleFrom1to2 + Math.PI);
+
+        //if angle self,p1,p2 is obtuse, use distance from p1
+        float angleFrom1ToSelf = (p1 - self).Angle();
+        float angleDiff1 = Math.Abs(angleFrom1ToSelf - angleFrom1to2);
+        if (angleDiff1 > Math.PI * 0.5 && angleDiff1 < Math.PI * 1.5) {
+            return (p1 - self).Length();
+        }
+
+        //if angle self,p2,p1 is obtuse, use distance from p2
+        float angleFrom2ToSelf = (p2 - self).Angle();
+        float angleDiff2 = Math.Abs(angleFrom2ToSelf - angleFrom2to1);
+        if (angleDiff2 > Math.PI * 0.5 && angleDiff2 < Math.PI * 1.5) {
+            return (p2 - self).Length();
+        }
+
+        //use distance from line
+        return (float)Math.Sqrt((self - p1).LengthSquared() - (p2 - p1).LengthSquared());
     }
 }

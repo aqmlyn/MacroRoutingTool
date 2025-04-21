@@ -85,7 +85,7 @@ public static class DebugMapTweaks {
     public static GetterEventProperty<bool> HoverTextEnabled = new(){Value = true};
 
     /// <summary>
-    /// Needed to draw a rectangle with the correct position and dimensions in high-res UIs.
+    /// Needed to draw a rectangle with non-integer position and dimensions.
     /// Using <see cref="Draw.Rect"/> results in those values being cast to integers,
     /// causing visual discrepancies that become very noticeable as the camera zooms in.
     /// </summary>

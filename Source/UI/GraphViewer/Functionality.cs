@@ -88,29 +88,6 @@ public static partial class GraphViewer {
     public static Route Route;
 
     /// <summary>
-    /// Contains references to each item type the <see cref="Selection"/> could contain. 
-    /// </summary>
-    public static class SelectionContents {
-        /// <summary>
-        /// The <see cref="Selection"/> currently contains <see cref="Point"/>s.  
-        /// </summary>
-        public const string Points = nameof(Points);
-        /// <summary>
-        /// The <see cref="Selection"/> currently contains <see cref="Connection"/>s. 
-        /// </summary>
-        public const string Connections = nameof(Connections);
-    }
-
-    /// <summary>
-    /// List of items currently selected in the graph viewer.
-    /// </summary>
-    public static List<Traversable> Selection = [];
-    /// <summary>
-    /// The type of item currently in the <see cref="Selection"/>. 
-    /// </summary>
-    public static string SelectionHas;
-
-    /// <summary>
     /// Pressing <see cref="MRTSettings.Bind_DebugFocusGraphMenu"/> will only toggle focus if this property's getter returns true.
     /// </summary>
     public static GetterEventProperty<bool> FocusBindEnabled = new();

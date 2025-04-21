@@ -18,6 +18,11 @@ public static partial class GraphViewer {
     public const float MenuBackOpacity = 0.75f;
 
     /// <summary>
+    /// The opacity of the black background displayed behind the graph while the viewer is enabled.
+    /// </summary>
+    public const float GraphBackOpacity = 0.25f;
+
+    /// <summary>
     /// Width of the banner drawn behind the level name, <inheritdoc cref="XMLDoc.Unit_PxAtTargetRes"/>.
     /// </summary>
     public const int LevelBannerWidth = (int)(Celeste.TargetWidth * 0.375f);
@@ -47,6 +52,7 @@ public static partial class GraphViewer {
     //TODO allow changing point stuff
     public static float PointNameScale = 0.5f;
     public static Color PointColor = Color.White;
+    public static Color PointHoveredColor = Color.Orange;
     public static float PointNameMargin = 1.5f;
 
     /// <summary>
@@ -162,10 +168,14 @@ public static partial class GraphViewer {
         if (Mode != (int)Modes.Disabled) {
             //menu back
             Draw.Rect(0, HeadbarHeight, MenuWidth + MarginH * 2, Celeste.TargetHeight - HeadbarHeight, Color.Black * MenuBackOpacity);
+
+            //fade
             for (int i = 1; i < MarginH * 2; i++) {
-                //fade
-                Draw.Line(MenuWidth + MarginH * 2 + i, HeadbarHeight + 1, MenuWidth + MarginH * 2 + i, Celeste.TargetHeight, Color.Black * (MenuBackOpacity * (MarginH - i) / MarginH));
+                Draw.Line(MenuWidth + MarginH * 2 + i, HeadbarHeight + 1, MenuWidth + MarginH * 2 + i, Celeste.TargetHeight, Color.Black * (MenuBackOpacity - (MenuBackOpacity - GraphBackOpacity) * (i / ((float)MarginH * 2))));
             }
+
+            //graph back
+            //Draw.Rect(MenuWidth + MarginH * 4 - 1, HeadbarHeight, Celeste.TargetWidth - (MenuWidth + MarginH * 4 - 1), Celeste.TargetHeight - HeadbarHeight, Color.Black * GraphBackOpacity);
         }
 
         MTexture controlBackTexture = GFX.Gui["strawberryCountBG"];
@@ -209,10 +219,17 @@ public static partial class GraphViewer {
     }
 
     public static void RenderGraph(MapEditor debugMap, Camera camera) {
+        //graph background
+        if (Mode != (int)Modes.Disabled) {
+            DebugMapTweaks.WhiteRect.Draw(new Vector2(camera.Left + (MenuWidth + MarginH * 4 - 1) / camera.Zoom, camera.Top + HeadbarHeight / camera.Zoom), Vector2.Zero, Color.Black * GraphBackOpacity, new Vector2((Celeste.TargetWidth - (MenuWidth + MarginH * 4 - 1)) / camera.Zoom, (Celeste.TargetHeight - HeadbarHeight) / camera.Zoom));
+        }
+
+        //points
         if (Graph != null) {
             foreach (Data.Point point in Graph.Points) {
                 //scale: texture.Atlas == GFX.Game ? Settings.Instance.WindowScale : 1f
                 point.TextElement.Camera = point.TextureElement.Camera = camera;
+                point.TextElement.Color = point.TextureElement.Color = Hovers.Contains(point) ? PointHoveredColor : PointColor;
                 point.TextElement.Text = string.IsNullOrWhiteSpace(point.Name) ? (Graph.Points.IndexOf(point) + 1).ToString() : point.Name;
                 point.TextElement.Position.Y = point.TextureElement.Position.Y - (((point.TextureElement.Texture?.Height ?? 0) / 2 * point.TextureElement.Scale.Y) - PointNameMargin) / camera.Zoom;
                 point.TextureElement.Render();

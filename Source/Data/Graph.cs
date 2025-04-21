@@ -6,7 +6,7 @@ namespace Celeste.Mod.MacroRoutingTool.Data;
 /// <summary>
 /// A graph component that can be traversed to or along.
 /// </summary>
-public class Traversable {
+public abstract class Traversable {
     /// <summary>
     /// Internal value that uniquely identifies this traversable item among those in its graph.
     /// </summary>
@@ -32,6 +32,13 @@ public class Traversable {
     /// each value is a <c cref="NumericExpression">NumericExpression</c> whose result will be assigned to the variable when this item is traversed to or along.
     /// </summary>
     public Dictionary<string, NumericExpression> Results;
+
+    /// <summary>
+    /// Determines whether the cursor is hovering over this item. If not, returns NaN.
+    /// If so, returns the distance from the cursor to this item, intended so that if the user is hovering over multiple items and
+    /// isn't multi-selecting, only the closest item to the cursor will be hovered.
+    /// </summary>
+    public abstract float HoverCheck();
 }
 
 public class Graph : MRTExport<Graph> {

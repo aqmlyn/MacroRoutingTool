@@ -57,6 +57,10 @@ public static partial class DebugMapHooks {
     /// Called each frame in <see cref="MapEditor.MouseModes.Resize"/>. 
     /// </summary>
     public static Action WhileResizing = () => {};
+    /// <summary>
+    /// Called each frame in <see cref="MapEditor.MouseModes.Hover"/> when no other action is being initiated.
+    /// </summary>
+    public static Action WhileHovering = () => {};
 
     public static float DirectionalPanBaseMult = 1f;
     /// <summary>

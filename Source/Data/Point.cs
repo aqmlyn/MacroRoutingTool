@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Celeste.Editor;
 using Celeste.Mod.MacroRoutingTool.UI;
 using Microsoft.Xna.Framework;
 using Monocle;
@@ -96,5 +97,12 @@ public class Point : Traversable {
         IgnoreCameraZoom = true,
         BorderThickness = 3f
     };
+
+    public override float HoverCheck()
+    {
+        Camera camera = (Camera)typeof(MapEditor).GetField(nameof(MapEditor.Camera), System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static).GetValue(GraphViewer.DebugMap);
+        float distance = (GraphViewer.DebugMap.mousePosition - new Vector2(X, Y)).Length();
+        return distance <= GraphViewer.PointHoverDistance / camera.Zoom ? distance : float.NaN;
+    }
   #endregion
 }

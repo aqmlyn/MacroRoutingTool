@@ -1,4 +1,9 @@
 using System.Collections.Generic;
+using Celeste.Editor;
+using Celeste.Mod.MacroRoutingTool.UI;
+using Microsoft.Xna.Framework;
+using Monocle;
+using YamlDotNet.Serialization;
 
 namespace Celeste.Mod.MacroRoutingTool.Data;
 
@@ -23,7 +28,23 @@ public class Connection : Traversable {
     /// </summary>
     public string Name;
 
+    /// <summary>
+    /// Whether this connection is currently being displayed in the graph viewer.
+    /// </summary>
+    [YamlIgnore]
+    public bool Visible;
+
     //TODO line colors, styles (e.g. dashed vs solid), shapes (e.g. points to curve through)
+
+    public override float HoverCheck()
+    {
+        if (!Visible || GraphViewer.Graph.Connections.Contains(this)) {return float.NaN;}
+        Camera camera = (Camera)typeof(MapEditor).GetField(nameof(MapEditor.Camera), System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static).GetValue(GraphViewer.DebugMap);
+        Point from = GraphViewer.Graph.Points[(int)From];
+        Point to = GraphViewer.Graph.Points[(int)To];
+        float distance = MInput.Mouse.Position.DistanceToLineSegment(new Vector2(from.X, from.Y).OnCamera(camera), new Vector2(to.X, to.Y).OnCamera(camera));
+        return distance > GraphViewer.ConnectionHoverDistance ? float.NaN : distance;
+    }
   #endregion
 
     public static Dictionary<string, Connection> FastTravel;
