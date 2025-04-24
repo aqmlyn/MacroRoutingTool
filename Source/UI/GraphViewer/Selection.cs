@@ -54,8 +54,47 @@ public static partial class GraphViewer {
     /// </summary>
     public static float ConnectionHoverDistance = 40;
 
+    public static void CheckContents(List<Traversable> list, out string type) {
+        //TODO unhardcode type checks
+        bool points = false;
+        bool connections = false;
+        foreach (var item in list) {
+            if (item is Data.Point) {points = true;}
+            else if (item is Data.Connection) {connections = true;}
+            if (points && connections) {break;}
+        }
+        type =
+            points && connections ? SelectionContents.Traversables
+          : points ? SelectionContents.Points
+          : connections ? SelectionContents.Connections
+          : null;
+    }
+
+    public static void ReplaceSelectionWithHovers() {
+        Selection.Clear();
+        Selection.AddRange(Hovers);
+        SelectionHas = HoversHas;
+        RefreshSelectionMenu();
+        Hovers.Clear();
+        HoversHas = null;
+    }
+
+    public static void ToggleSelectionOfHovers() {
+        foreach (var hover in Hovers) {
+            if (!Selection.Remove(hover)) {Selection.Add(hover);}
+        }
+        RefreshSelectionMenu();
+        Hovers.Clear();
+        HoversHas = null;
+    }
+
+    public static void RefreshSelectionMenu() {
+        TextMenu menu = EditorSelectionMenu.Remove();
+        EditorSelectionMenu.Create(menu);
+    }
+
     /// <summary>
-    /// Runs each frame in <see cref="Editor.MapEditor.MouseModes.Hover"/>  to determine whether the user is
+    /// Runs each frame in <see cref="Editor.MapEditor.MouseModes.Hover"/> to determine whether the user is
     /// currently hovering over any items in the graph viewer.
     /// </summary>
     public static void UpdateHover() {
@@ -105,39 +144,34 @@ public static partial class GraphViewer {
         Hovers.AddRange(Graph.Points.Where(point => point.HoverRectCheck()));
         Hovers.AddRange(Graph.Connections.Where(conn => conn.HoverRectCheck()));
 
-        //determine what the hovers now contains
-        bool points = false;
-        bool connections = false;
-        foreach (var item in Hovers) {
-            if (item is Data.Point) {points = true;}
-            else if (item is Data.Connection) {connections = true;}
-            if (points && connections) {break;}
-        }
-        HoversHas =
-            points && connections ? SelectionContents.Traversables
-          : points ? SelectionContents.Points
-          : connections ? SelectionContents.Connections
-          : null;
+        CheckContents(Hovers, out HoversHas);
     }
 
-    public static void ReleaseHoverRect(ref bool isCommit) {
+    public static void ReleaseRect(ref bool isCommit) {
         isCommit = true;
-
-        //replace the selection with the hovers
-        Selection.Clear();
-        Selection.AddRange(Hovers);
-        SelectionHas = HoversHas;
-        Hovers.Clear();
-        HoversHas = null;
+        if (Selection.Any(item => !Hovers.Contains(item))) {
+            ToggleSelectionOfHovers();
+        } else {
+            ReplaceSelectionWithHovers();
+        }
     }
 
-    public static void StartDrag(ref bool start) {
-        if (Hovers.Any(item => !Selection.Contains(item))) {
+    public static void StartReplaceDrag(ref bool start) {
+        if (Hovers.Count == 0 || Hovers.Any(item => !Selection.Contains(item))) {
             Selection.Clear();
             SelectionHas = null;
         }
         if (Hovers.Count == 0) {DebugMap.mouseMode = Editor.MapEditor.MouseModes.Select;}
         start = true;
+    }
+
+    public static void StartToggleDrag(ref bool start) {
+        if (Hovers.Count == 0) {
+            DebugMap.mouseMode = Editor.MapEditor.MouseModes.Select;
+            start = true;
+        } else {
+            ToggleSelectionOfHovers();
+        }
     }
 
     public static Dictionary<Func<bool>, Action> StartMoveDecisions = new() {
@@ -152,9 +186,7 @@ public static partial class GraphViewer {
         } else {
             allow = Hovers.Count != 0;
             if (allow) {
-                Selection.Clear();
-                SelectionHas = HoversHas;
-                Selection.AddRange(Hovers);
+                ReplaceSelectionWithHovers();
             }
         }
         if (allow) {
