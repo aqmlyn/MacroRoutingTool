@@ -13,6 +13,11 @@ public abstract class Traversable {
     public uint ID;
 
     /// <summary>
+    /// Text displayed for this item when shown in the graph viewer and editor.
+    /// </summary>
+    public string Name;
+
+    /// <summary>
     /// Arbitrary data associated with this traversable item.
     /// </summary>
     public Dictionary<string, object> Data;

@@ -106,9 +106,39 @@ public static partial class GraphViewer {
             return addTo;
         }
 
-        public TextMenu Remove() {
+        public TextMenu Remove(bool closeIfNoHovers = true) {
             if (Container != null) {
                 foreach (TextMenu.Item item in Items) {
+                    //if this MenuPart contains the currently hovered item:
+                    if (Container.Selection >= Container.Items.Count || Container.Current == item) {
+                        //if there's a hoverable item before this menu part, move hover to that
+                        for (int i = Container.Items.IndexOf(item) - 1; i >= 0; i--) {
+                            if (Container.Items[i].Hoverable) {
+                                Container.Current = Container.Items[i];
+                                break;
+                            }
+                        }
+                        //else
+                        if (Container.Selection >= Container.Items.Count || Container.Current == item) {
+                            //if there's a hoverable item after this menu part, move hover to that
+                            for (int i = Container.Items.IndexOf(Items[^1]); i < Container.Items.Count; i++) {
+                                if (Container.Items[i].Hoverable) {
+                                    Container.Current = Container.Items[i];
+                                    break;
+                                }
+                            }
+                            //else
+                            if (Container.Selection >= Container.Items.Count || Container.Current == item) {
+                                //there is nothing else in the containing menu that can be hovered
+                                if (closeIfNoHovers) {
+                                    Container.Close();
+                                } else {
+                                    Container.Focused = false;
+                                    Container.Selection = -1;
+                                }
+                            }
+                        }
+                    }
                     Container.Remove(item);
                 }
             }

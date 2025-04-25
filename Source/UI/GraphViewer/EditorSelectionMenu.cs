@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using Microsoft.Xna.Framework;
 
 namespace Celeste.Mod.MacroRoutingTool.UI;
@@ -32,8 +33,22 @@ public static partial class GraphViewer {
         Creator = part => {
             if (Selection.Count == 0) {return [];}
 
-            //Weights
-            TextMenu.Button toggleShowWeights = new(MRTDialog.SelectionWeightList);
+            //Name
+            ListItem itemNameDisplay = new(false, true){LeftWidthPortion = 0.4f};
+            itemNameDisplay.Left.Value = MRTDialog.ItemName;
+            itemNameDisplay.Left.Handler.Bind<string>(new());
+            itemNameDisplay.Right.Handler.Bind<string>(new() {
+                ValueGetter = () => {
+                    var items = Selection.DistinctBy(item => item.Name);
+                    return items.Count() != 1 ? "" : items.First().Name;
+                },
+                ValueParser = str => {
+                    foreach (var item in Selection) {
+                        item.Name = str;
+                    }
+                    return str;
+                }
+            });
 
             //Requirements
             TextMenu.Button toggleShowRequirements = new(MRTDialog.SelectionRequirementList);
@@ -42,20 +57,58 @@ public static partial class GraphViewer {
             TextMenu.Button toggleShowResults = new(MRTDialog.SelectionResultList);
 
             List<TextMenu.Item> items = [
-                toggleShowWeights,
+                itemNameDisplay,
                 toggleShowRequirements,
                 toggleShowResults
             ];
 
-            if (Selection.Count == 1) {
-                //Name
-                ListItem itemNameDisplay = new(false, true);
-                itemNameDisplay.Left.Value = MRTDialog.ItemName;
-                itemNameDisplay.Left.Handler.Bind<string>(new());
-                items.Insert(0, itemNameDisplay);
-            }
-
             if (SelectionHas == SelectionContents.Points) {
+                //TODO Image
+
+                //X
+                ListItem pointX = new(false, true){LeftWidthPortion = 0.4f};
+                pointX.Left.Value = MRTDialog.PointSelectionX;
+                pointX.Left.Handler.Bind<string>(new());
+                pointX.Right.Handler.Bind<string>(new() {
+                    ValueGetter = () => {
+                        var items = Selection.DistinctBy(item => (item as Data.Point).X);
+                        return items.Count() != 1 ? "" : (items.First() as Data.Point).X.ToString();
+                    },
+                    ValueParser = str => {
+                        if (int.TryParse(str, out int x)) {
+                            foreach (var item in Selection) {
+                                (item as Data.Point).X = x;
+                            }
+                        } else {
+                            str = "";
+                        }
+                        return str;
+                    }
+                });
+                items.Add(pointX);
+
+                //Y
+                ListItem pointY = new(false, true){LeftWidthPortion = 0.4f};
+                pointY.Left.Value = MRTDialog.PointSelectionY;
+                pointY.Left.Handler.Bind<string>(new());
+                pointY.Right.Handler.Bind<string>(new() {
+                    ValueGetter = () => {
+                        var items = Selection.DistinctBy(item => (item as Data.Point).Y);
+                        return items.Count() != 1 ? "" : (items.First() as Data.Point).Y.ToString();
+                    },
+                    ValueParser = str => {
+                        if (int.TryParse(str, out int y)) {
+                            foreach (var item in Selection) {
+                                (item as Data.Point).Y = y;
+                            }
+                        } else {
+                            str = "";
+                        }
+                        return str;
+                    }
+                });
+                items.Add(pointY);
+
                 //Default End
                 MultiDisplayData.TextMenuOption<string> pointEndType = new(MRTDialog.PointSelectionEndpointType);
                 pointEndType.Add(MRTDialog.PointEndTypes[Data.Point.EndType.None](), Data.Point.EndType.None, true);
@@ -66,40 +119,24 @@ public static partial class GraphViewer {
                 //TODO Fast Travel
                 
                 if (Selection.Count == 1) {
-                    //X
-                    ListItem pointX = new(false, true);
-                    pointX.Left.Value = MRTDialog.PointSelectionX;
-                    pointX.Left.Handler.Bind<string>(new());
-                    items.Add(pointX);
-
-                    //Y
-                    ListItem pointY = new(false, true);
-                    pointY.Left.Value = MRTDialog.PointSelectionY;
-                    pointY.Left.Handler.Bind<string>(new());
-                    items.Add(pointY);
-
-                    //TODO Image
-
                     //ID
                     ListItem idDisplay = new();
-                    pointY.Left.Value = MRTDialog.PointSelectionID;
-                    pointY.Left.Handler.Bind<string>(new());
+                    idDisplay.Left.Value = MRTDialog.PointSelectionID;
+                    idDisplay.Left.Handler.Bind<string>(new());
                     items.Add(idDisplay);
                 }
             } else if (SelectionHas == SelectionContents.Connections) {
-                if (Selection.Count == 1) {
-                    //From
-                    ListItem connFrom = new(false, true);
-                    connFrom.Left.Value = MRTDialog.ConnectionSelectionFrom;
-                    connFrom.Left.Handler.Bind<string>(new());
-                    items.Add(connFrom);
+                //From
+                ListItem connFrom = new(false, true);
+                connFrom.Left.Value = MRTDialog.ConnectionSelectionFrom;
+                connFrom.Left.Handler.Bind<string>(new());
+                items.Add(connFrom);
 
-                    //To
-                    ListItem connTo = new(false, true);
-                    connTo.Left.Value = MRTDialog.ConnectionSelectionTo;
-                    connTo.Left.Handler.Bind<string>(new());
-                    items.Add(connTo);
-                }
+                //To
+                ListItem connTo = new(false, true);
+                connTo.Left.Value = MRTDialog.ConnectionSelectionTo;
+                connTo.Left.Handler.Bind<string>(new());
+                items.Add(connTo);
             }
 
             return items;

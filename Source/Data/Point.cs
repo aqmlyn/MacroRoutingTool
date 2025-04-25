@@ -33,11 +33,6 @@ public class Point : Traversable {
   #endregion
 
   #region Viewer display
-    /// <summary>
-    /// Text displayed for this point when shown in the graph viewer and editor.
-    /// </summary>
-    public string Name;
-
     [YamlIgnore]
     public int _x;
     /// <summary>

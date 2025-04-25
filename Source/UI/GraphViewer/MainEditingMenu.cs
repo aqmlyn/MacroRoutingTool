@@ -34,7 +34,10 @@ public static partial class GraphViewer {
                 selectionHeader
             ];
         },
-        AfterCreate = creator => EditorSelectionChooser.Create(creator.CreatorFor)
+        AfterCreate = creator => {
+            EditorSelectionChooser.Create(creator.CreatorFor);
+            EditorSelectionMenu.Create(creator.CreatorFor);
+        }
     };
 
     public static void AddPoint() {

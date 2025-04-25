@@ -89,8 +89,8 @@ public static partial class GraphViewer {
     }
 
     public static void RefreshSelectionMenu() {
-        TextMenu menu = EditorSelectionMenu.Remove();
-        EditorSelectionMenu.Create(menu);
+        EditorSelectionChooser.Create(EditorSelectionChooser.Remove());
+        EditorSelectionMenu.Create(EditorSelectionMenu.Remove());
     }
 
     /// <summary>

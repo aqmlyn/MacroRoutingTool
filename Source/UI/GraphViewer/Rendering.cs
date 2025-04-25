@@ -53,7 +53,7 @@ public static partial class GraphViewer {
     public static float PointNameScale = 0.5f;
     public static Color PointColor = Color.White;
     public static Color PointHoveredColor = Color.Orange;
-    public static Color PointSelectedColor = Color.Aqua;
+    public static Color PointSelectedColor = Color.DodgerBlue;
     public static float PointNameMargin = 1.5f;
 
     /// <summary>

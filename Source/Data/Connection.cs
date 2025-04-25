@@ -23,10 +23,6 @@ public class Connection : Traversable {
   #endregion
     
   #region Viewer display
-    /// <summary>
-    /// Text displayed for this connection when shown in the graph viewer and editor.
-    /// </summary>
-    public string Name;
 
     /// <summary>
     /// Whether this connection is currently being displayed in the graph viewer.
