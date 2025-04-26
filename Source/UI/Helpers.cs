@@ -168,24 +168,19 @@ public static class UIHelpers {
     }
 
     public static float DistanceToLineSegment(this Vector2 self, Vector2 p1, Vector2 p2) {
-        float angleFrom1to2 = (p2 - p1).Angle();
-        float angleFrom2to1 = (float)(angleFrom1to2 + Math.PI);
-
-        //if angle self,p1,p2 is obtuse, use distance from p1
-        float angleFrom1ToSelf = (p1 - self).Angle();
-        float angleDiff1 = Math.Abs(angleFrom1ToSelf - angleFrom1to2);
-        if (angleDiff1 > Math.PI * 0.5 && angleDiff1 < Math.PI * 1.5) {
+        //if angle self,p1,p2 is obtuse, p1 is the closest point
+        float p1angle = Math.Abs((p2 - p1).Angle() - (self - p1).Angle());
+        if (p1angle > Math.PI * 0.5 && p1angle < Math.PI * 1.5) {
             return (p1 - self).Length();
         }
 
-        //if angle self,p2,p1 is obtuse, use distance from p2
-        float angleFrom2ToSelf = (p2 - self).Angle();
-        float angleDiff2 = Math.Abs(angleFrom2ToSelf - angleFrom2to1);
-        if (angleDiff2 > Math.PI * 0.5 && angleDiff2 < Math.PI * 1.5) {
+        //if angle self,p2,p1 is obtuse, p2 is the closest point
+        float p2angle = Math.Abs((p1 - p2).Angle() - (self - p2).Angle());
+        if (p2angle > Math.PI * 0.5 && p2angle < Math.PI * 1.5) {
             return (p2 - self).Length();
         }
 
-        //use distance from line
-        return (float)Math.Sqrt((self - p1).LengthSquared() - (p2 - p1).LengthSquared());
+        //if both are acute, closest point is on the line segment
+        return (float)(Math.Abs(Math.Sin(Math.Abs((p2 - p1).Angle() + Math.PI * 2 - (self - p1).Angle() + Math.PI * 2))) * (self - p1).Length());
     }
 }

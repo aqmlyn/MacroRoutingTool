@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Celeste.Mod.MacroRoutingTool.Logic;
 
@@ -10,7 +11,7 @@ public abstract class Traversable {
     /// <summary>
     /// Internal value that uniquely identifies this traversable item among those in its graph.
     /// </summary>
-    public uint ID;
+    public Guid ID = Guid.NewGuid();
 
     /// <summary>
     /// Text displayed for this item when shown in the graph viewer and editor.

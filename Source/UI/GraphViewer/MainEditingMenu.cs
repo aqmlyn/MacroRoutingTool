@@ -1,3 +1,5 @@
+using Celeste.Mod.MacroRoutingTool.Data;
+
 namespace Celeste.Mod.MacroRoutingTool.UI;
 
 public static partial class GraphViewer {
@@ -21,7 +23,9 @@ public static partial class GraphViewer {
             };
 
             //Add Connection
-            TextMenu.Button addConnectionButton = new(MRTDialog.GraphMenuAddConnection);
+            TextMenu.Button addConnectionButton = new(MRTDialog.GraphMenuAddConnection) {
+                OnPressed = AddConnection
+            };
 
             //SELECTION
             TextMenu.Header selectionHeader = new(MRTDialog.SelectionHeader);
@@ -41,10 +45,38 @@ public static partial class GraphViewer {
     };
 
     public static void AddPoint() {
-        Graph.Points.Add(new() {
+        Point point = new() {
             Image = UIHelpers.AtlasPaths.Gui + "dot", //TODO allow this to be changed, ideally with like an image picker
             X = (int)DebugMap.mousePosition.X,
             Y = (int)DebugMap.mousePosition.Y
-        });
+        };
+        Graph.Points.Add(point);
+        Selection.Clear();
+        Selection.Add(point);
+        SelectionHas = SelectionContents.Points;
+        EditorSelectionChooser.Create(EditorSelectionChooser.Remove());
+        EditorSelectionMenu.Create(EditorSelectionMenu.Remove());
+    }
+
+    public static void AddConnection() {
+        Connection conn = new();
+        if (SelectionHas == SelectionContents.Points && Selection.Count == 2) {
+            conn.From = Selection[0].ID;
+            conn.To = Selection[1].ID;
+        } else if (Selection.Count == 1) {
+            if (SelectionHas == SelectionContents.Connections) {
+                Connection otherConn = Selection[0] as Connection;
+                conn.From = otherConn.From;
+                conn.To = otherConn.To;
+            } else if (SelectionHas == SelectionContents.Points) {
+                conn.From = (Selection[0] as Point).ID;
+            }
+        }
+        Graph.Connections.Add(conn);
+        Selection.Clear();
+        Selection.Add(conn);
+        SelectionHas = SelectionContents.Connections;
+        EditorSelectionChooser.Create(EditorSelectionChooser.Remove());
+        EditorSelectionMenu.Create(EditorSelectionMenu.Remove());
     }
 }

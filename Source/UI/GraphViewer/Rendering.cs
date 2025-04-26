@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using Celeste.Editor;
+using Celeste.Mod.MacroRoutingTool.Data;
 using Microsoft.Xna.Framework;
 using Monocle;
 
@@ -49,12 +50,13 @@ public static partial class GraphViewer {
     /// </summary>
     public const int MarginV = 4;
 
-    //TODO allow changing point stuff
+    //TODO allow changing point and connection visuals
     public static float PointNameScale = 0.5f;
-    public static Color PointColor = Color.White;
-    public static Color PointHoveredColor = Color.Orange;
-    public static Color PointSelectedColor = Color.DodgerBlue;
+    public static Color ItemColor = Color.White;
+    public static Color ItemHoveredColor = Color.Orange;
+    public static Color ItemSelectedColor = Color.DodgerBlue;
     public static float PointNameMargin = 1.5f;
+    public static float ConnectionLineThickness = 8f;
 
     /// <summary>
     /// Render all parts of the graph viewer that stay at a fixed position on the screen.
@@ -227,10 +229,21 @@ public static partial class GraphViewer {
 
         //points
         if (Graph != null) {
+            MTexture arrowhead = GFX.Gui["tinyarrow"];
+            foreach (Connection conn in Graph.Connections) {
+                if (conn.Visible = conn.From != default && conn.To != default && conn.From != conn.To && Connection.VisibleChecks.TryGetValue(conn.VisibleWhen, out var check) && check(conn)) {
+                    Color color = Hovers.Contains(conn) ? ItemHoveredColor : Selection.Contains(conn) ? ItemSelectedColor : ItemColor;
+                    Data.Point connFrom = Graph.Points.First(pt => pt.ID == conn.From);
+                    Data.Point connTo = Graph.Points.First(pt => pt.ID == conn.To);
+                    Vector2 diff = new Vector2(connTo.X, connTo.Y) - new Vector2(connFrom.X, connFrom.Y);
+                    DebugMapTweaks.WhiteRect.Draw(new Vector2(connFrom.X, connFrom.Y), new Vector2(0f, DebugMapTweaks.WhiteRect.Height / 2f), color, new Vector2((diff.Length() - arrowhead.Width / camera.Zoom / 2) / DebugMapTweaks.WhiteRect.Width, ConnectionLineThickness / camera.Zoom / DebugMapTweaks.WhiteRect.Height), diff.Angle());
+                    arrowhead.Draw(new Vector2(connTo.X, connTo.Y), new Vector2(arrowhead.Width, arrowhead.Height / 2f), color, 1f / camera.Zoom, diff.Angle());
+                }
+            }
             foreach (Data.Point point in Graph.Points) {
                 //scale: texture.Atlas == GFX.Game ? Settings.Instance.WindowScale : 1f
                 point.TextElement.Camera = point.TextureElement.Camera = camera;
-                point.TextElement.Color = point.TextureElement.Color = Hovers.Contains(point) ? PointHoveredColor : Selection.Contains(point) ? PointSelectedColor : PointColor;
+                point.TextElement.Color = point.TextureElement.Color = Hovers.Contains(point) ? ItemHoveredColor : Selection.Contains(point) ? ItemSelectedColor : ItemColor;
                 point.TextElement.Text = string.IsNullOrWhiteSpace(point.Name) ? (Graph.Points.IndexOf(point) + 1).ToString() : point.Name;
                 point.TextElement.Position.Y = point.TextureElement.Position.Y - (((point.TextureElement.Texture?.Height ?? 0) / 2 * point.TextureElement.Scale.Y) - PointNameMargin) / camera.Zoom;
                 point.TextureElement.Render();

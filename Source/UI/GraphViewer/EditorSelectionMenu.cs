@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using Celeste.Mod.MacroRoutingTool.Data;
 using Microsoft.Xna.Framework;
 
 namespace Celeste.Mod.MacroRoutingTool.UI;
@@ -71,8 +72,9 @@ public static partial class GraphViewer {
                 pointX.Left.Handler.Bind<string>(new());
                 pointX.Right.Handler.Bind<string>(new() {
                     ValueGetter = () => {
+                        if (SelectionHas != SelectionContents.Points) {return "";}
                         var items = Selection.DistinctBy(item => (item as Data.Point).X);
-                        return items.Count() != 1 ? "" : (items.First() as Data.Point).X.ToString();
+                        return items != null && items.Count() != 1 ? "" : (items.First() as Data.Point).X.ToString();
                     },
                     ValueParser = str => {
                         if (int.TryParse(str, out int x)) {
@@ -93,8 +95,9 @@ public static partial class GraphViewer {
                 pointY.Left.Handler.Bind<string>(new());
                 pointY.Right.Handler.Bind<string>(new() {
                     ValueGetter = () => {
+                        if (SelectionHas != SelectionContents.Points) {return "";}
                         var items = Selection.DistinctBy(item => (item as Data.Point).Y);
-                        return items.Count() != 1 ? "" : (items.First() as Data.Point).Y.ToString();
+                        return items != null && items.Count() != 1 ? "" : (items.First() as Data.Point).Y.ToString();
                     },
                     ValueParser = str => {
                         if (int.TryParse(str, out int y)) {
@@ -127,15 +130,42 @@ public static partial class GraphViewer {
                 }
             } else if (SelectionHas == SelectionContents.Connections) {
                 //From
-                ListItem connFrom = new(false, true);
-                connFrom.Left.Value = MRTDialog.ConnectionSelectionFrom;
-                connFrom.Left.Handler.Bind<string>(new());
+                MultiDisplayData.TextMenuOption<Data.Point> connFrom = new(MRTDialog.ConnectionSelectionFrom);
+                connFrom.Add("-", null);
+                for (int i = 0; i < Graph.Points.Count; i++) {
+                    var pt = Graph.Points[i];
+                    connFrom.Add($"({i + 1}) {(string.IsNullOrWhiteSpace(pt.Name) ? $"[{MRTDialog.GraphDefaultName}]" : pt.Name)}", pt);
+                }
+                var initFroms = Selection.DistinctBy(item => (item as Connection).From);
+                if (initFroms != null && initFroms.Count() == 1) {
+                    var initFromId = (initFroms.First() as Connection).From;
+                    connFrom.Index = Graph.Points.FindIndex(pt => pt.ID == initFromId) + 1;
+                }
+                connFrom.OnValueChange = pt => {
+                    if (pt == null) {return;}
+                    foreach (var conn in Selection.ConvertAll(item => (Connection)item)) {
+                        conn.From = pt.ID;
+                    }
+                };
                 items.Add(connFrom);
 
                 //To
-                ListItem connTo = new(false, true);
-                connTo.Left.Value = MRTDialog.ConnectionSelectionTo;
-                connTo.Left.Handler.Bind<string>(new());
+                MultiDisplayData.TextMenuOption<Data.Point> connTo = new(MRTDialog.ConnectionSelectionTo);
+                connTo.Add("-", null);
+                for (int i = 0; i < Graph.Points.Count; i++) {
+                    var pt = Graph.Points[i];
+                    connTo.Add($"({i + 1}) {(string.IsNullOrWhiteSpace(pt.Name) ? $"[{MRTDialog.GraphDefaultName}]" : pt.Name)}", pt);
+                }
+                var initTos = Selection.DistinctBy(item => (item as Connection).To);
+                if (initTos != null && initTos.Count() == 1) {
+                    var initToId = (initTos.First() as Connection).To;
+                    connTo.Index = Graph.Points.FindIndex(pt => pt.ID == initToId) + 1;
+                }
+                connTo.OnValueChange = pt => {
+                    foreach (var conn in Selection.ConvertAll(item => (Connection)item)) {
+                        conn.To = pt?.ID ?? default;
+                    }
+                };
                 items.Add(connTo);
             }
 

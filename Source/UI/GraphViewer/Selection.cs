@@ -83,6 +83,7 @@ public static partial class GraphViewer {
         foreach (var hover in Hovers) {
             if (!Selection.Remove(hover)) {Selection.Add(hover);}
         }
+        SelectionHas = HoversHas;
         RefreshSelectionMenu();
         Hovers.Clear();
         HoversHas = null;
