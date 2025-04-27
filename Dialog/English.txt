@@ -91,6 +91,10 @@ macroroutingtool_graphsel_ptfasttravel_checkpoint=Checkpoint
 # Selected connection(s)
 macroroutingtool_graphsel_connfrom=From
 macroroutingtool_graphsel_connto=To
+macroroutingtool_graphsel_connvis=Visible
+macroroutingtool_graphsel_connvis_always=Always
+macroroutingtool_graphsel_connvis_fromsel=From Selected
+macroroutingtool_graphsel_connvis_fromortosel=From or To Sel.
 
 # Graph/route chooser
 macroroutingtool_chooser_enter=Choose another {0}...

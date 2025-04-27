@@ -104,11 +104,18 @@ public static class MRTDialog {
     public static string PointSelectionFastTravelType => GetInternal("graphsel_ptfasttravel");
     public static string ConnectionSelectionFrom => GetInternal("graphsel_connfrom");
     public static string ConnectionSelectionTo => GetInternal("graphsel_connto");
+    public static string ConnectionSelectionVisibility => GetInternal("graphsel_connvis");
 
     public static Dictionary<string, Func<string>> PointEndTypes = new() {
         {Data.Point.EndType.None, () => GetInternal("genopt_na")},
         {Data.Point.EndType.Start, () => GetInternal("graphsel_ptend_start")},
         {Data.Point.EndType.Finish, () => GetInternal("graphsel_ptend_finish")}
+    };
+
+    public static Dictionary<string, Func<string>> ConnectionVisibilityTypes = new() {
+        {Data.Connection.VisibleTypes.Always, () => GetInternal("graphsel_connvis_always")},
+        {Data.Connection.VisibleTypes.FromSelected, () => GetInternal("graphsel_connvis_fromsel")},
+        {Data.Connection.VisibleTypes.FromOrToSelected, () => GetInternal("graphsel_connvis_fromortosel")}
     };
   #endregion
 

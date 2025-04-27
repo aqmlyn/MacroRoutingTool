@@ -1,5 +1,7 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using Celeste.Mod.MacroRoutingTool.Data;
 using Microsoft.Xna.Framework;
 
@@ -130,46 +132,54 @@ public static partial class GraphViewer {
                 }
             } else if (SelectionHas == SelectionContents.Connections) {
                 //From
-                MultiDisplayData.TextMenuOption<Data.Point> connFrom = new(MRTDialog.ConnectionSelectionFrom);
-                connFrom.Add("-", null);
-                for (int i = 0; i < Graph.Points.Count; i++) {
-                    var pt = Graph.Points[i];
-                    connFrom.Add($"({i + 1}) {(string.IsNullOrWhiteSpace(pt.Name) ? $"[{MRTDialog.GraphDefaultName}]" : pt.Name)}", pt);
-                }
-                var initFroms = Selection.DistinctBy(item => (item as Connection).From);
-                if (initFroms != null && initFroms.Count() == 1) {
-                    var initFromId = (initFroms.First() as Connection).From;
-                    connFrom.Index = Graph.Points.FindIndex(pt => pt.ID == initFromId) + 1;
-                }
-                connFrom.OnValueChange = pt => {
-                    if (pt == null) {return;}
-                    foreach (var conn in Selection.ConvertAll(item => (Connection)item)) {
-                        conn.From = pt.ID;
+                items.Add(new SelectionEditor.Option<Guid>(() => MRTDialog.ConnectionSelectionFrom, typeof(Connection).GetField(nameof(Connection.From))) {
+                    Options = [.. Graph.Points.Select(pt => pt.ID)],
+                    OptionLabeller = id => {
+                        Data.Point pt = Graph.Points.First(pt => pt.ID == id);
+                        return $"({Graph.Points.IndexOf(pt) + 1}) {(string.IsNullOrWhiteSpace(pt.Name) ? $"[{MRTDialog.GraphDefaultName}]" : pt.Name)}";
                     }
-                };
-                items.Add(connFrom);
+                }.Create());
 
                 //To
-                MultiDisplayData.TextMenuOption<Data.Point> connTo = new(MRTDialog.ConnectionSelectionTo);
-                connTo.Add("-", null);
-                for (int i = 0; i < Graph.Points.Count; i++) {
-                    var pt = Graph.Points[i];
-                    connTo.Add($"({i + 1}) {(string.IsNullOrWhiteSpace(pt.Name) ? $"[{MRTDialog.GraphDefaultName}]" : pt.Name)}", pt);
-                }
-                var initTos = Selection.DistinctBy(item => (item as Connection).To);
-                if (initTos != null && initTos.Count() == 1) {
-                    var initToId = (initTos.First() as Connection).To;
-                    connTo.Index = Graph.Points.FindIndex(pt => pt.ID == initToId) + 1;
-                }
-                connTo.OnValueChange = pt => {
-                    foreach (var conn in Selection.ConvertAll(item => (Connection)item)) {
-                        conn.To = pt?.ID ?? default;
+                items.Add(new SelectionEditor.Option<Guid>(() => MRTDialog.ConnectionSelectionTo, typeof(Connection).GetField(nameof(Connection.To))) {
+                    Options = [.. Graph.Points.Select(pt => pt.ID)],
+                    OptionLabeller = id => {
+                        Data.Point pt = Graph.Points.First(pt => pt.ID == id);
+                        return $"({Graph.Points.IndexOf(pt) + 1}) {(string.IsNullOrWhiteSpace(pt.Name) ? $"[{MRTDialog.GraphDefaultName}]" : pt.Name)}";
                     }
-                };
-                items.Add(connTo);
+                }.Create());
+
+                //Visible
+                items.Add(new SelectionEditor.Option<string>(() => MRTDialog.ConnectionSelectionVisibility, typeof(Connection).GetField(nameof(Connection.VisibleWhen))){
+                    Options = [.. MRTDialog.ConnectionVisibilityTypes.Keys],
+                    OptionLabeller = opt => MRTDialog.ConnectionVisibilityTypes[opt]()
+                }.Create());
             }
 
             return items;
         }
     };
+
+    public static class SelectionEditor {
+        public class Option<TValue> : MemberEditor.Option<TValue> {
+            public Option(Func<string> labelGetter) {
+                ItemsToEdit = () => Selection.ConvertAll(item => (object)item);
+                LabelGetter = labelGetter;
+            }
+
+            public Option(Func<string> labelGetter, FieldInfo field) : this(labelGetter) {
+                OnGet = () => field.GetValue;
+                OnSet = () => field.SetValue;
+            }
+
+            public Option(Func<string> labelGetter, PropertyInfo prop) : this(labelGetter) {
+                OnGet = () => prop.GetValue;
+                OnSet = () => prop.SetValue;
+            }
+
+            public Option(string label) : this(() => label) {}
+            public Option(string label, FieldInfo field) : this(() => label, field) {}
+            public Option(string label, PropertyInfo prop) : this(() => label, prop) {}
+        }
+    }
 }
