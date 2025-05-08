@@ -141,11 +141,14 @@ public static partial class GraphViewer {
 
                 //TODO Fast Travel
                 
-                if (Selection.Count == 1) {
+                if (ActiveSelection.Count == 1) {
                     //ID
                     ListItem idDisplay = new();
                     idDisplay.Left.Value = MRTDialog.PointSelectionID;
                     idDisplay.Left.Handler.Bind<string>(new());
+                    idDisplay.Right.Handler.Bind<Guid>(new() {
+                        ValueGetter = () => ActiveSelection[0].ID,
+                    });
                     items.Add(idDisplay);
                 }
             } else if (SelectionHas == SelectionContents.Connections) {

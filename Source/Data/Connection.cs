@@ -78,7 +78,7 @@ public class Connection : Traversable {
 
     public override string EditorID()
     {
-        return $"({GraphViewer.Graph.Points.IndexOf(GraphViewer.Graph.Points.First(pt => Equals(pt.ID, From)))} -> {GraphViewer.Graph.Points.IndexOf(GraphViewer.Graph.Points.First(pt => Equals(pt.ID, To)))})";
+        return $"({GraphViewer.Graph.Points.IndexOf(GraphViewer.Graph.Points.First(pt => Equals(pt.ID, From))) + 1} -> {GraphViewer.Graph.Points.IndexOf(GraphViewer.Graph.Points.First(pt => Equals(pt.ID, To))) + 1})";
     }
   #endregion
 

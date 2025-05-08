@@ -54,8 +54,9 @@ public static partial class GraphViewer {
         Selection.Clear();
         Selection.Add(point);
         SelectionHas = SelectionContents.Points;
-        EditorSelectionChooser.Create(EditorSelectionChooser.Remove());
-        EditorSelectionMenu.Create(EditorSelectionMenu.Remove());
+        ActiveSelection.Clear();
+        ActiveSelection.AddRange(Selection);
+        RefreshSelectionMenu();
     }
 
     public static void AddConnection() {
@@ -76,7 +77,8 @@ public static partial class GraphViewer {
         Selection.Clear();
         Selection.Add(conn);
         SelectionHas = SelectionContents.Connections;
-        EditorSelectionChooser.Create(EditorSelectionChooser.Remove());
-        EditorSelectionMenu.Create(EditorSelectionMenu.Remove());
+        ActiveSelection.Clear();
+        ActiveSelection.AddRange(Selection);
+        RefreshSelectionMenu();
     }
 }
