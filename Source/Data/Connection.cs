@@ -75,6 +75,11 @@ public class Connection : Traversable {
         Point to = GraphViewer.Graph.Points.FirstOrDefault(pt => pt.ID == To, null);
         return Visible && GraphViewer.Graph.Connections.Contains(this) && Collide.RectToLine(GraphViewer.DebugMap.GetMouseRect(GraphViewer.DebugMap.mouseDragStart, GraphViewer.DebugMap.mousePosition), new Vector2(from.X, from.Y), new Vector2(to.X, to.Y));
     }
+
+    public override string EditorID()
+    {
+        return $"({GraphViewer.Graph.Points.IndexOf(GraphViewer.Graph.Points.First(pt => Equals(pt.ID, From)))} -> {GraphViewer.Graph.Points.IndexOf(GraphViewer.Graph.Points.First(pt => Equals(pt.ID, To)))})";
+    }
   #endregion
 
     public static Dictionary<string, Connection> FastTravel;

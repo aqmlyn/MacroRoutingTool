@@ -67,8 +67,8 @@ macroroutingtool_routemenu_varsheader=VARIABLES
 # SELECTION INFO
 macroroutingtool_graphsel_header=SELECTION
 macroroutingtool_graphsel_empty=Nothing selected
-macroroutingtool_graphsel_points={0}/{1}
-macroroutingtool_graphsel_conns={0}/{1}
+macroroutingtool_graphsel_chooserlabel={0}/{1}
+macroroutingtool_graphsel_chooserall=All
 
 # Selected anything
 #(name label uses genlist_namelabel)

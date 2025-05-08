@@ -34,6 +34,10 @@ public static partial class GraphViewer {
     /// The type of item currently in the <see cref="Selection"/>. 
     /// </summary>
     public static string SelectionHas;
+    /// <summary>
+    /// List of items currently chosen by the selection chooser in the graph viewer.
+    /// </summary>
+    public static List<Traversable> ActiveSelection = [];
 
     /// <summary>
     /// List of items currently hovered in the graph viewer.
@@ -74,6 +78,8 @@ public static partial class GraphViewer {
         Selection.Clear();
         Selection.AddRange(Hovers);
         SelectionHas = HoversHas;
+        ActiveSelection.Clear();
+        ActiveSelection.AddRange(Selection);
         RefreshSelectionMenu();
         Hovers.Clear();
         HoversHas = null;

@@ -91,8 +91,8 @@ public static class MRTDialog {
   #region Selection info
     public static string SelectionHeader => GetInternal("graphsel_header");
     public static string SelectedNothing => GetInternal("graphsel_empty");
-    public static string SelectedMultiplePoints => GetInternal("graphsel_points");
-    public static string SelectedMultipleConnections => GetInternal("graphsel_conns");
+    public static string SelectionChooserLabel => GetInternal("graphsel_chooserlabel", false);
+    public static string SelectionChooserAll => GetInternal("graphsel_chooserall");
     public static string SelectionWeightList => GetInternal("graphsel_weights");
     public static string SelectionRequirementList => GetInternal("graphsel_requires");
     public static string SelectionResultList => GetInternal("graphsel_results");

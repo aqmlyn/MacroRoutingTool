@@ -26,6 +26,24 @@ public static partial class GraphViewer {
 
             if (Selection.Count > 1) {
                 //Multiple items selected -- display a chooser
+                MultiDisplayData.TextMenuOption<int> selChooser = new(string.Format(MRTDialog.SelectionChooserLabel, "-", Selection.Count));
+                selChooser.OnValueChange = idx => {
+                    string idxText = "-";
+                    List<Traversable> items = Selection;
+                    if (idx > 0) {
+                        idxText = idx.ToString();
+                        items = [Selection[idx - 1]];
+                    }
+                    ActiveSelection.Clear();
+                    ActiveSelection.AddRange(items);
+                    selChooser.Label = string.Format(MRTDialog.SelectionChooserLabel, idxText, Selection.Count);
+                };
+                selChooser.Add(MRTDialog.SelectionChooserAll, 0, true);
+                foreach (var item in Selection) {
+                    selChooser.Add($"{item.EditorID()} {(string.IsNullOrEmpty(item.Name) ? MRTDialog.GraphDefaultName : item.Name)}", selChooser.Values.Count);
+                }
+
+                return [selChooser];
             }
 
             return [];
@@ -34,7 +52,7 @@ public static partial class GraphViewer {
 
     public static MenuPart EditorSelectionMenu = new(){
         Creator = part => {
-            if (Selection.Count == 0) {return [];}
+            if (ActiveSelection.Count == 0) {return [];}
 
             //Name
             ListItem itemNameDisplay = new(false, true){LeftWidthPortion = 0.4f};
@@ -42,11 +60,11 @@ public static partial class GraphViewer {
             itemNameDisplay.Left.Handler.Bind<string>(new());
             itemNameDisplay.Right.Handler.Bind<string>(new() {
                 ValueGetter = () => {
-                    var items = Selection.DistinctBy(item => item.Name);
+                    var items = ActiveSelection.DistinctBy(item => item.Name);
                     return items.Count() != 1 ? "" : items.First().Name;
                 },
                 ValueParser = str => {
-                    foreach (var item in Selection) {
+                    foreach (var item in ActiveSelection) {
                         item.Name = str;
                     }
                     return str;
@@ -75,12 +93,12 @@ public static partial class GraphViewer {
                 pointX.Right.Handler.Bind<string>(new() {
                     ValueGetter = () => {
                         if (SelectionHas != SelectionContents.Points) {return "";}
-                        var items = Selection.DistinctBy(item => (item as Data.Point).X);
+                        var items = ActiveSelection.DistinctBy(item => (item as Data.Point).X);
                         return items != null && items.Count() != 1 ? "" : (items.First() as Data.Point).X.ToString();
                     },
                     ValueParser = str => {
                         if (int.TryParse(str, out int x)) {
-                            foreach (var item in Selection) {
+                            foreach (var item in ActiveSelection) {
                                 (item as Data.Point).X = x;
                             }
                         } else {
@@ -98,12 +116,12 @@ public static partial class GraphViewer {
                 pointY.Right.Handler.Bind<string>(new() {
                     ValueGetter = () => {
                         if (SelectionHas != SelectionContents.Points) {return "";}
-                        var items = Selection.DistinctBy(item => (item as Data.Point).Y);
+                        var items = ActiveSelection.DistinctBy(item => (item as Data.Point).Y);
                         return items != null && items.Count() != 1 ? "" : (items.First() as Data.Point).Y.ToString();
                     },
                     ValueParser = str => {
                         if (int.TryParse(str, out int y)) {
-                            foreach (var item in Selection) {
+                            foreach (var item in ActiveSelection) {
                                 (item as Data.Point).Y = y;
                             }
                         } else {
@@ -136,7 +154,7 @@ public static partial class GraphViewer {
                     Options = [.. Graph.Points.Select(pt => pt.ID)],
                     OptionLabeller = id => {
                         Data.Point pt = Graph.Points.First(pt => pt.ID == id);
-                        return $"({Graph.Points.IndexOf(pt) + 1}) {(string.IsNullOrWhiteSpace(pt.Name) ? $"[{MRTDialog.GraphDefaultName}]" : pt.Name)}";
+                        return $"({Graph.Points.IndexOf(pt) + 1}) {(string.IsNullOrWhiteSpace(pt.Name) ? MRTDialog.GraphDefaultName : pt.Name)}";
                     }
                 }.Create());
 
@@ -145,7 +163,7 @@ public static partial class GraphViewer {
                     Options = [.. Graph.Points.Select(pt => pt.ID)],
                     OptionLabeller = id => {
                         Data.Point pt = Graph.Points.First(pt => pt.ID == id);
-                        return $"({Graph.Points.IndexOf(pt) + 1}) {(string.IsNullOrWhiteSpace(pt.Name) ? $"[{MRTDialog.GraphDefaultName}]" : pt.Name)}";
+                        return $"({Graph.Points.IndexOf(pt) + 1}) {(string.IsNullOrWhiteSpace(pt.Name) ? MRTDialog.GraphDefaultName : pt.Name)}";
                     }
                 }.Create());
 
@@ -163,7 +181,7 @@ public static partial class GraphViewer {
     public static class SelectionEditor {
         public class Option<TValue> : MemberEditor.Option<TValue> {
             public Option(Func<string> labelGetter) {
-                ItemsToEdit = () => Selection.ConvertAll(item => (object)item);
+                ItemsToEdit = () => ActiveSelection.ConvertAll(item => (object)item);
                 LabelGetter = labelGetter;
             }
 

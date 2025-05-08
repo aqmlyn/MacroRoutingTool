@@ -51,6 +51,11 @@ public abstract class Traversable {
     /// created by left clicking and dragging in the graph viewer.
     /// </summary>
     public abstract bool HoverRectCheck();
+
+    /// <summary>
+    /// Returns text that uniquely identifies this item in the graph viewer.
+    /// </summary>
+    public abstract string EditorID();
 }
 
 public class Graph : MRTExport<Graph> {

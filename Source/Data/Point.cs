@@ -104,5 +104,10 @@ public class Point : Traversable {
     {
         return Collide.RectToPoint(GraphViewer.DebugMap.GetMouseRect(GraphViewer.DebugMap.mouseDragStart, GraphViewer.DebugMap.mousePosition), new Vector2(X, Y));
     }
+
+    public override string EditorID()
+    {
+        return $"({GraphViewer.Graph.Points.IndexOf(this) + 1})";
+    }
   #endregion
 }
