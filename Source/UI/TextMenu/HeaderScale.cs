@@ -5,6 +5,8 @@ using MonoMod.Cil;
 namespace Celeste.Mod.MacroRoutingTool.UI;
 
 public partial class HeaderScaleData {
+    public float Scale;
+    
     public static void EnableAllHooks() {
         IL.Celeste.TextMenu.Header.Render += EnableILTextMenuHeaderRender;
         IL.Celeste.TextMenu.Header.Height += EnableILTextMenuHeaderMeasure;

@@ -8,16 +8,39 @@ namespace Celeste.Mod.MacroRoutingTool.UI;
 
 public static partial class GraphViewer {
     public class MenuCreator {
+        /// <summary>
+        /// The <see cref="Mode"/> that the <see cref="TextMenu"/> this creates should be initially shown for, if any.
+        /// </summary>
         public int? InitialFor = null;
+        /// <summary>
+        /// The <see cref="TextMenu"/> that this <see cref="MenuCreator"/> creates.
+        /// </summary>
         public TextMenu CreatorFor;
+        /// <summary>
+        /// Called by <see cref="Create"/> to get a list of <see cref="TextMenu.Items"/> to add to <see cref="CreatorFor"/>. 
+        /// </summary>
         public Func<MenuCreator, List<TextMenu.Item>> OnCreate;
+        /// <summary>
+        /// Called by <see cref="Create"/> after adding the items to <see cref="CreatorFor"/>. 
+        /// </summary>
         public Action<MenuCreator> AfterCreate;
+        /// <summary>
+        /// Add the given <see cref="TextMenu.Item"/> to <see cref="CreatorFor"/>. 
+        /// </summary>
         public void Add(TextMenu.Item item) {
             if (CreatorFor != null) {
                 item.Container = CreatorFor;
                 CreatorFor.Add(item);
             }
         }
+        /// <summary>
+        /// Creates and returns a new <see cref="TextMenu"/> populated using the following process:
+        /// <list type="number">
+        /// <item>Call <see cref="OnCreate"/>.</item>
+        /// <item>Add the resulting list of <see cref="TextMenu.Item"/>s to <see cref="CreatorFor"/>.</item>
+        /// <item>Call <see cref="AfterCreate"/>.</item>  
+        /// </list>
+        /// </summary>
         public TextMenu Create() {
             var items = OnCreate?.Invoke(this) ?? [];
             foreach (var item in items) {
@@ -29,10 +52,23 @@ public static partial class GraphViewer {
     }
 
     public class MenuPart {
+        /// <summary>
+        /// The <see cref="TextMenu"/> that currently contains this <see cref="MenuPart"/>. 
+        /// </summary>
         public TextMenu Container;
+        /// <summary>
+        /// The list of <see cref="TextMenu.Item"/>s this <see cref="MenuPart"/> currently contains. 
+        /// </summary>
         public List<TextMenu.Item> Items = [];
+        /// <summary>
+        /// <see cref="Create"/> will call this function, passing this <see cref="MenuPart"/>, to get the list of <see cref="TextMenu.Item"/>s
+        /// to add to its <see cref="Container"/>.  
+        /// </summary>
         public Func<MenuPart, List<TextMenu.Item>> Creator;
 
+        /// <summary>
+        /// Add the given <see cref="TextMenu.Item"/> to this <see cref="MenuPart"/> and its current <see cref="Container"/>. 
+        /// </summary>
         public void Add(TextMenu.Item item) {
             if (Container != null) {
                 item.Container = Container;
@@ -106,6 +142,12 @@ public static partial class GraphViewer {
             return addTo;
         }
 
+        /// <summary>
+        /// Remove this <see cref="MenuPart"/>'s <see cref="Items"/> from <see cref="Container"/>, the <see cref="TextMenu"/> that currently contains them.<br/>
+        /// If an item in this <see cref="MenuPart"/> is currently hovered, the hover will automatically be moved to a hoverable item
+        /// outside this <see cref="MenuPart"/>. If there is no such item, the argument <paramref name="closeIfNoHovers"/> controls
+        /// whether to close (true, default) or unfocus (false) the <see cref="TextMenu"/>.
+        /// </summary>
         public TextMenu Remove(bool closeIfNoHovers = true) {
             if (Container != null) {
                 foreach (TextMenu.Item item in Items) {
@@ -151,9 +193,42 @@ public static partial class GraphViewer {
     /// </summary>
     public static TextMenu CurrentMenu;
 
+    /// <summary>
+    /// Whether the <see cref="CurrentMenu"/> is currently focused. 
+    /// </summary>
+    public static bool InMenu => CurrentMenu != null && (CurrentMenu.Focused || CurrentMenu.RenderAsFocused);
+
+    /// <summary>
+    /// Whether the user is currently typing in a <see cref="TextMenuExt.TextBox"/> in the <see cref="CurrentMenu"/>.  
+    /// </summary>
+    public static bool Typing {
+        get {
+            if (CurrentMenu == null) return false;
+            foreach (TextMenu.Item item in CurrentMenu.Items) {
+                if (item is ListItem listItem) {
+                    foreach (var side in new ListItem.Part[] {listItem.Left, listItem.Right}) {
+                        if (side.Editable && ((TextMenuExt.TextBox)side.Element).Typing) {
+                            return true;
+                        }
+                    }
+                }
+            }
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// List of <see cref="MenuCreator"/>s for the menus initially shown in each <see cref="Mode"/>.
+    /// </summary>
     public static Dictionary<int, MenuCreator> InitialMenusByMode = [];
+    /// <summary>
+    /// Gets the <see cref="MenuCreator"/> for the initial menu for the current <see cref="Mode"/>.  
+    /// </summary>
     public static MenuCreator ModeInitialMenu => InitialMenusByMode.TryGetValue(Mode, out MenuCreator menu) ? menu : null;
 
+    /// <summary>
+    /// Creates and returns a new <see cref="TextMenu"/> whose appearance has been configured for display in the graph viewer.
+    /// </summary>
     public static TextMenu NewMenu() {
         TextMenu menu = new(){
             Focused = false,
@@ -171,6 +246,12 @@ public static partial class GraphViewer {
         return menu;
     }
 
+    /// <summary>
+    /// <list type="number">
+    /// <item>Remove the <see cref="TextMenu"/> currently stored in <see cref="CurrentMenu"/>.</item>
+    /// <item>Add the given menu to the <see cref="DebugMap"/>'s entity list and store that menu in <see cref="CurrentMenu."/></item>  
+    /// </list>
+    /// </summary>
     public static void SwapMenu(MenuCreator menu) {
         if (CurrentMenu != null) {
             CurrentMenu.Focused = CurrentMenu.Visible = false;
@@ -187,6 +268,14 @@ public static partial class GraphViewer {
         }
     }
 
+    /// <summary>
+    /// For each <c>public static</c> member of the <see cref="GraphViewer"/> class that is a field whose type is <see cref="MenuCreator"/>:
+    /// <list type="number">
+    /// <item>Call the <see cref="MenuCreator"/>'s <see cref="MenuCreator.Create"/> method.</item>
+    /// <item>Add the resulting <see cref="TextMenu"/> to the <see cref="DebugMap"/>'s entity list.</item>
+    /// <item>if the creator's menu is the <see cref="MenuCreator.InitialFor"/> a <see cref="Mode"/>, add the creator to <see cref="InitialMenusByMode"/> accordingly.</item>
+    /// </list>  
+    /// </summary>
     public static void CreateMenus() {
         foreach (MenuCreator menu in
             typeof(GraphViewer)

@@ -9,7 +9,38 @@ using MonoMod.RuntimeDetour;
 
 namespace Celeste.Mod.MacroRoutingTool.UI;
 
-public partial class MultiDisplayData {
+/// <summary>
+/// Intended to be added to a <see cref="MenuDataContainer.MenuData"/> to change the <see cref="TextMenu"/> to be
+/// able to be displayed with arbitrary position and dimensions and alongside other <see cref="TextMenu"/>s. 
+/// </summary>
+public class MultiDisplayData {
+    /// <summary>
+    /// Height to add to items' positions when rendering them, <inheritdoc cref="XMLDoc.Unit_PxAtTargetRes"/>.
+    /// </summary>
+    public float ScrollOffset;
+
+    /// <summary>
+    /// Maximum allowed value of ScrollOffset, <inheritdoc cref="XMLDoc.Unit_PxAtTargetRes"/>.<br/>
+    /// Calculated to prevent scrolling past the point where the last item is fully visible.
+    /// </summary>
+    public float MaxScrollOffset;
+
+    /// <summary>
+    /// Amount by which the scale of each item's visuals (text and images) will be multiplied.
+    /// </summary>
+    public float ItemScaleMult = 1f;
+
+    /// <summary>
+    /// Maximum allowed value of ItemScaleMult.
+    /// </summary>
+    public float ItemScaleMaxMult = 1f;
+
+    /// <summary>
+    /// Combined height of each <c>Visible</c> item plus the vertical <c>ItemSpacing</c> added in between each item,
+    /// <inheritdoc cref="XMLDoc.Unit_PxAtTargetRes"/>.
+    /// </summary>
+    public float TotalItemHeight;
+
     public static ILHook ILTextMenuGetScrollTargetY;
     public static ILHook ILTextMenuOptionRender;
     public static ILHook ILTextMenuOptionHeight;

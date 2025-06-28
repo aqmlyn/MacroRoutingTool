@@ -10,7 +10,12 @@ public class Route : MRTExport<Route> {
     public Guid GraphID;
 
     /// <summary>
-    /// IDs of points this route visits, in order.
+    /// Point this route starts at.
     /// </summary>
-    public List<uint> Points;
+    public Point Start;
+
+    /// <summary>
+    /// Connections this route traverses along, in order.
+    /// </summary>
+    public List<Connection> Connections;
 }

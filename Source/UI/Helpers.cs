@@ -180,7 +180,7 @@ public static class UIHelpers {
             return (p2 - self).Length();
         }
 
-        //if both are acute, closest point is on the line segment
+        //if both are acute, closest point is on the line that passes through p1 and p2
         return (float)(Math.Abs(Math.Sin(Math.Abs((p2 - p1).Angle() + Math.PI * 2 - (self - p1).Angle() + Math.PI * 2))) * (self - p1).Length());
     }
 }

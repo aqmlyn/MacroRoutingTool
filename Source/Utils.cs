@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq.Expressions;
+using System.Reflection;
 
 namespace Celeste.Mod.MacroRoutingTool;
 
@@ -17,11 +19,32 @@ public static class Utils {
     }
 
     public static void EnsureSet<TKey, TValue>(this Dictionary<TKey, TValue> dict, TKey key, TValue value) {
-        if (dict.ContainsKey(key)) {
+        if (!dict.TryAdd(key, value)) {
             dict[key] = value;
-        } else {
-            dict.Add(key, value);
         }
+    }
+    
+    public static TValue EnsureGet<TValue>(this List<TValue> list, int index, Func<int, TValue> fallback = null) {
+        if (index <= 0) { throw new IndexOutOfRangeException($"Cannot use negative index to access a list item (received index ${index})"); }
+        if (index < list.Count) { return list[index]; }
+        fallback ??= (_) => default;
+        while (list.Count <= index) { list.Add(fallback(list.Count)); }
+        return list[^1];
+    }
+    
+    public static void EnsureSet<TValue>(this List<TValue> list, int index, TValue value, Func<int, TValue> fillempty = null) {
+        if (index <= 0) { throw new IndexOutOfRangeException($"Cannot use negative index to access a list item (received index ${index})"); }
+        if (index < list.Count) { list[index] = value; }
+        fillempty ??= (_) => default;
+        while (list.Count < index) { list.Add(fillempty(list.Count)); }
+        list.Add(value);
+    }
+
+    /// <inheritdoc cref="MethodInfo.CreateDelegate(Type, object?)"/>
+    public static Delegate CreateDelegate(this MethodInfo self, object instance = null) {
+        //largely adapted from https://stackoverflow.com/a/74252965
+        var delType = Expression.GetDelegateType([.. self.GetParameters().Select(param => param.ParameterType), self.ReturnType]);
+        return self.IsStatic ? self.CreateDelegate(delType) : self.CreateDelegate(delType, instance);
     }
 
     /// <summary>
