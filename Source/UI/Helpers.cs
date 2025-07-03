@@ -3,12 +3,42 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Monocle;
 using MonoMod.Cil;
+using MonoMod.RuntimeDetour;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 
 namespace Celeste.Mod.MacroRoutingTool.UI;
+
+public static class UIHelperHooks {
+    public static ILHook ILSpriteBatchBegin;
+    public static ILHook ILSpriteBatchEnd;
+    
+    public static void EnableAll() {
+        ILSpriteBatchBegin = new(typeof(SpriteBatch).GetMethod(nameof(SpriteBatch.Begin), [typeof(SpriteSortMode), typeof(BlendState), typeof(SamplerState), typeof(DepthStencilState), typeof(RasterizerState), typeof(Effect), typeof(Matrix)]), EnableIL_SpriteBatchBegin);
+        ILSpriteBatchEnd = new(typeof(SpriteBatch).GetMethod(nameof(SpriteBatch.End)), EnableIL_SpriteBatchEnd);
+    }
+
+    public static void DisableAll() {
+        ILSpriteBatchBegin.Dispose();
+        ILSpriteBatchEnd.Dispose();
+    }
+    
+    public static void EnableIL_SpriteBatchBegin(ILContext ilctx) {
+        ILCursor ilcur = new(ilctx);
+        ilcur.EmitLdarg0(); //EmitLdarga(0) is invalid btw
+        ilcur.EmitLdarga(7);
+        ilcur.EmitLdfld(typeof(Matrix).GetField(nameof(Matrix.M11)));
+        ilcur.EmitCall(typeof(UIHelpers).GetMethod(nameof(UIHelpers.OnSpriteBatchBegin)));
+    }
+    
+    public static void EnableIL_SpriteBatchEnd(ILContext ilctx) {
+        ILCursor ilcur = new(ilctx);
+        ilcur.EmitLdarg0();
+        ilcur.EmitCall(typeof(UIHelpers).GetMethod(nameof(UIHelpers.OnSpriteBatchEnd)));
+    }
+}
 
 public static class UIHelpers {
     /// <summary>
@@ -24,7 +54,7 @@ public static class UIHelpers {
         if (bind.Keys.Count > 0) {
             return Input.GuiKey(bind.Keys[^1]); //in both bind.Keys and bind.Buttons, the last element is the one most recently added
         } else if (MInput.GamePads.Any(gp => gp.Attached) && bind.Buttons.Count > 0) {
-            return Input.GuiSingleButton(bind.Buttons[^1], "controls/keyboard/oemquestion"); //need to specify fallback to avoid ambiguous call
+            return Input.GuiSingleButton(bind.Buttons[^1], "controls/keyboard/oemquestion"); //fallback won't be used, but must be specified to avoid ambiguous call
         } else {
             return Input.GuiMouseButton(MInput.MouseData.MouseButtons.Left);
         }
@@ -32,11 +62,11 @@ public static class UIHelpers {
 
     public static class AtlasPaths {
         public const string Root = "Graphics/Atlases/";
-        public const string Game = Root + "Gameplay/";
-        public const string Opening = Root + "Opening/";
-        public const string Gui = Root + "Gui/";
-        public const string Misc = Root + "Misc/";
-        public const string Portraits = Root + "Portraits/";
+        public const string Game = "Gameplay/";
+        public const string Opening = "Opening/";
+        public const string Gui = "Gui/";
+        public const string Misc = "Misc/";
+        public const string Portraits = "Portraits/";
     }
     public static Dictionary<string, Atlas> AtlasesByPath = new(){
         {AtlasPaths.Game, GFX.Game},
@@ -48,50 +78,33 @@ public static class UIHelpers {
     public static bool TryGetTexture(string path, out MTexture texture) {
         texture = null;
         if (path.StartsWith(AtlasPaths.Root)) {
-            string atlasPath = "";
-            string fullPathCopy = path;
-            for (int i = 0; i < 3; i++) {
-                int idx = fullPathCopy.IndexOf('/') + 1;
-                atlasPath += fullPathCopy[..idx];
-                fullPathCopy = fullPathCopy[idx..];
-            }
-            if (AtlasesByPath.TryGetValue(atlasPath, out Atlas atlas)) {
-                return atlas.textures.TryGetValue(fullPathCopy, out texture);
-            }
+            path = path[AtlasPaths.Root.Length..];
+        }
+        int idx = path.IndexOf('/') + 1;
+        if (idx != 0 && AtlasesByPath.TryGetValue(path[..idx], out Atlas atlas)) {
+            return atlas.textures.TryGetValue(path[idx..], out texture);
         }
         return false;
     }
 
     public static float WidestCharWidth => ActiveFont.FontSize.Characters.Max(ch => ch.Value.XAdvance);
 
-    public class SpriteBatchArgs {
-        public SpriteSortMode SpriteSortMode;
-        public BlendState BlendState;
-        public SamplerState SamplerState;
-        public DepthStencilState DepthStencilState;
-        public RasterizerState RasterizerState;
-        public Effect Effect;
-        public Matrix Matrix;
-    }
-
+    public const string SpriteBatchZoom = nameof(SpriteBatchZoom);
     /// <summary>
-    /// Emit IL code that calls <c>Monocle.Draw.SpriteBatch.Begin</c> with the given arguments.
+    /// Stores data about all <see cref="SpriteBatch"/>es on which <see cref="SpriteBatch.Begin"/> have been called but <see cref="SpriteBatch.End"/> haven't. 
     /// </summary>
-    /// <param name="args">The arguments to call <c>Monocle.Draw.SpriteBatch.Begin</c> with.</param>
-    public static void EmitSpriteBatchBegin(this ILCursor ilcur, SpriteBatchArgs args){
-        ilcur.EmitCall(typeof(Draw).GetMethod("get_" + nameof(Draw.SpriteBatch)));
-        ilcur.EmitLdcI4((int)args.SpriteSortMode);
-        ilcur.EmitLdsfld(typeof(SpriteBatchArgs).GetField(nameof(SpriteBatchArgs.BlendState)));
-        ilcur.EmitLdsfld(typeof(SpriteBatchArgs).GetField(nameof(SpriteBatchArgs.SamplerState)));
-        ilcur.EmitLdsfld(typeof(SpriteBatchArgs).GetField(nameof(SpriteBatchArgs.DepthStencilState)));
-        ilcur.EmitLdsfld(typeof(SpriteBatchArgs).GetField(nameof(SpriteBatchArgs.RasterizerState)));
-        if (args.Effect == null) {
-            ilcur.EmitLdnull();
-        } else {
-            ilcur.EmitLdsfld(typeof(SpriteBatchArgs).GetField(nameof(SpriteBatchArgs.Effect)));
-        }
-        ilcur.EmitLdsfld(typeof(SpriteBatchArgs).GetField(nameof(SpriteBatchArgs.Matrix)));
-        ilcur.EmitCallvirt(typeof(SpriteBatch).GetMethod(nameof(SpriteBatch.Begin), [typeof(SpriteSortMode), typeof(BlendState), typeof(SamplerState), typeof(DepthStencilState), typeof(RasterizerState), typeof(Effect), typeof(Matrix)]));
+    public static Dictionary<SpriteBatch, Dictionary<string, object>> SpriteBatches = [];
+    /// <remarks>
+    /// The current method of finding <see cref="SpriteBatchZoom"/> only considers multiplications to the current <see cref="SpriteBatch"/>'s
+    /// transformation matrix. It's probably possible to take <i>some</i> more effects into account, but a completely effective method would need
+    ///  to implement code analysis at an extreme scope to determine which <see cref="SpriteBatch"/> is being rendered to and which
+    /// <see cref="Camera"/>'s zoom is currently affecting it.
+    /// </remarks>
+    public static void OnSpriteBatchBegin(SpriteBatch batch, float curZoom) {
+        SpriteBatches.EnsureGet(batch, []).EnsureSet(SpriteBatchZoom, curZoom * Celeste.TargetWidth / Celeste.GameWidth / Settings.Instance.WindowScale);
+    }
+    public static void OnSpriteBatchEnd(SpriteBatch batch) {
+        SpriteBatches.Remove(batch);
     }
 
     public static FieldInfo AreaGetter = typeof(MapEditor).GetField("area", BindingFlags.NonPublic | BindingFlags.Static);

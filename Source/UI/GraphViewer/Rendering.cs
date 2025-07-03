@@ -227,8 +227,14 @@ public static partial class GraphViewer {
             DebugMapTweaks.WhiteRect.Draw(new Vector2(camera.Left + (MenuWidth + MarginH * 4 - 1) / camera.Zoom, camera.Top + HeadbarHeight / camera.Zoom), Vector2.Zero, Color.Black * GraphBackOpacity, new Vector2((Celeste.TargetWidth - (MenuWidth + MarginH * 4 - 1)) / camera.Zoom, (Celeste.TargetHeight - HeadbarHeight) / camera.Zoom));
         }
 
-        //points
         if (Graph != null) {
+            //points
+            foreach (Data.Point point in Graph.Points) {
+                point.TextElement.Position.Y = point.TextureElement.Position.Y - (((point.TextureElement.Texture?.Height ?? 0) / 2 * point.TextureElement.Scale.Y) - PointNameMargin) / camera.Zoom;
+                point.TextureElement.Render();
+                point.TextElement.Render();
+            }
+            //connections
             MTexture arrowhead = GFX.Gui["tinyarrow"];
             foreach (Connection conn in Graph.Connections) {
                 if (conn.Visible = conn.From != default && conn.To != default && conn.From != conn.To && Connection.VisibleChecks.TryGetValue(conn.VisibleWhen, out var check) && check(conn)) {
@@ -239,15 +245,6 @@ public static partial class GraphViewer {
                     DebugMapTweaks.WhiteRect.Draw(new Vector2(connFrom.X, connFrom.Y), new Vector2(0f, DebugMapTweaks.WhiteRect.Height / 2f), color, new Vector2((diff.Length() - arrowhead.Width / camera.Zoom / 2) / DebugMapTweaks.WhiteRect.Width, ConnectionLineThickness / camera.Zoom / DebugMapTweaks.WhiteRect.Height), diff.Angle());
                     arrowhead.Draw(new Vector2(connTo.X, connTo.Y), new Vector2(arrowhead.Width, arrowhead.Height / 2f), color, 1f / camera.Zoom, diff.Angle());
                 }
-            }
-            foreach (Data.Point point in Graph.Points) {
-                //scale: texture.Atlas == GFX.Game ? Settings.Instance.WindowScale : 1f
-                point.TextElement.Camera = point.TextureElement.Camera = camera;
-                point.TextElement.Color = point.TextureElement.Color = Hovers.Contains(point) ? ItemHoveredColor : Selection.Contains(point) ? ItemSelectedColor : ItemColor;
-                point.TextElement.Text = string.IsNullOrWhiteSpace(point.Name) ? (Graph.Points.IndexOf(point) + 1).ToString() : point.Name;
-                point.TextElement.Position.Y = point.TextureElement.Position.Y - (((point.TextureElement.Texture?.Height ?? 0) / 2 * point.TextureElement.Scale.Y) - PointNameMargin) / camera.Zoom;
-                point.TextureElement.Render();
-                point.TextElement.Render();
             }
         }
     }

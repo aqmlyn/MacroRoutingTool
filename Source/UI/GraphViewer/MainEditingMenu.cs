@@ -50,6 +50,15 @@ public static partial class GraphViewer {
             X = (int)DebugMap.mousePosition.X,
             Y = (int)DebugMap.mousePosition.Y
         };
+        point.TextElement.ValueHandler.Bind<string>(new(){
+            ValueGetter = () => string.IsNullOrWhiteSpace(point.Name) ? (Graph.Points.IndexOf(point) + 1).ToString() : point.Name
+        });
+        point.TextElement.ColorsByState = point.TextureElement.ColorsByState = new(){
+            {UITextElement.States.Idle, ItemColor},
+            {UITextElement.States.Hovered, ItemHoveredColor},
+            {UITextElement.States.Selected, ItemSelectedColor}
+        };
+        point.TextureElement.StateTarget = UITextureElement.StateTargets.Texture;
         Graph.Points.Add(point);
         Selection.Clear();
         Selection.Add(point);

@@ -77,5 +77,10 @@ public static partial class GraphViewer {
         if (MRT.Settings.Bind_DebugFocusGraphMenu.Pressed && FocusBindEnabled.Value) {
             CurrentMenu.Focused = !CurrentMenu.Focused;
         }
+        if (Mode != (int)Modes.Disabled) {
+            foreach (var point in Graph.Points) {
+                point.TextElement.State = point.TextureElement.State = Hovers.Contains(point) ? UITextElement.States.Hovered : Selection.Contains(point) ? UITextElement.States.Selected : UITextElement.States.Idle;
+            }
+        }
     }
 }

@@ -26,6 +26,7 @@ public class MRT : EverestModule {
     }
 
     public override void Load() {
+        UI.UIHelperHooks.EnableAll();
         UI.DebugMapHooks.EnableAll();
         UI.HeaderScaleData.EnableAllHooks();
         UI.MultiDisplayData.EnableAllHooks();
@@ -35,6 +36,7 @@ public class MRT : EverestModule {
     }
 
     public override void Unload() {
+        UI.UIHelperHooks.EnableAll();
         UI.DebugMapHooks.DisableAll();
         UI.HeaderScaleData.DisableAllHooks();
         UI.MultiDisplayData.DisableAllHooks();
@@ -43,7 +45,7 @@ public class MRT : EverestModule {
         UI.GraphViewer.DisableListeners();
     }
 
-    public static string LogTag(params string[] subtags) => string.Join("/", "MacroRoutingTool", subtags);
+    public static string LogTag(params string[] subtags) => string.Join("/", "MacroroutingTool", subtags);
     public class LogTags {
         public const string Debug = "Debug";
         public const string Utils = "Utils";

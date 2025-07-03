@@ -72,7 +72,7 @@ public class Point : Traversable {
             _image = value;
             if (UIHelpers.TryGetTexture(value, out MTexture texture)) {
                 TextureElement.Texture = texture;
-                TextureElement.Scale = Vector2.One * (TextureElement.Texture.Atlas == GFX.Game ? 6f : 1f);
+                TextureElement.Sprite.Scale = TextureElement.Scale * (TextureElement.Texture.Atlas == GFX.Game ? 6f : 1f);
             } else {
                 //TODO log warning
             }
@@ -80,33 +80,30 @@ public class Point : Traversable {
     }
 
     [YamlIgnore]
-    public UIHelpers.TextureElement TextureElement = new() {
+    public UITextureElement TextureElement = new() {
         Justify = Vector2.One * 0.5f,
-        IgnoreCameraZoom = true,
+        IgnoreZoom = true,
         BorderThickness = 3f
     };
 
     [YamlIgnore]
-    public UIHelpers.TextElement TextElement = new() {
+    public UITextElement TextElement = new() {
         Justify = new Vector2(0.5f, 1f),
-        IgnoreCameraZoom = true,
+        IgnoreZoom = true,
         BorderThickness = 3f
     };
 
-    public override float HoverPointCheck()
-    {
+    public override float HoverPointCheck() {
         Camera camera = (Camera)typeof(MapEditor).GetField(nameof(MapEditor.Camera), System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static).GetValue(GraphViewer.DebugMap);
         float distance = (GraphViewer.DebugMap.mousePosition - new Vector2(X, Y)).Length();
         return distance <= GraphViewer.PointHoverDistance / camera.Zoom ? distance : float.NaN;
     }
 
-    public override bool HoverRectCheck()
-    {
+    public override bool HoverRectCheck() {
         return Collide.RectToPoint(GraphViewer.DebugMap.GetMouseRect(GraphViewer.DebugMap.mouseDragStart, GraphViewer.DebugMap.mousePosition), new Vector2(X, Y));
     }
 
-    public override string EditorID()
-    {
+    public override string EditorID() {
         return $"({GraphViewer.Graph.Points.IndexOf(this) + 1})";
     }
   #endregion
