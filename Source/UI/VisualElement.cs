@@ -52,7 +52,8 @@ public abstract class VisualElement {
         /// </summary>
         /// <typeparam name="T">Type of value this handler is handling.</typeparam>
         /// <param name="handler">Typed ValueHandling whose delegates to use.</param>
-        protected void Bind<T>(ValueHandling<T> handler) {
+        protected void Bind<T>(ValueHandling<T> handler = null) {
+            handler ??= new();
             ValueGetter = () => handler.Value = handler.ValueGetter == null ? handler.Value : handler.ValueGetter();
             ValueSetter = (oldVal, newVal) => {
                 var castNewVal = (T)newVal;
@@ -154,7 +155,7 @@ public class TextElement : VisualElement {
         public Func<string> ValueToString;
 
         /// <inheritdoc cref="VisualElement.ValueHandling.Bind{T}"/> 
-        public void Bind<T>(ValueHandling<T> handler) {
+        public void Bind<T>(ValueHandling<T> handler = null) {
             base.Bind(handler);
             SetValueFromString = str => Value = handler.ValueParser == null ? default : handler.ValueParser(str);
             ValueToString = () => handler.ValueToString == null ? Value?.ToString() : handler.ValueToString((T)Value);
@@ -226,7 +227,7 @@ public class TextureElement : VisualElement {
         public Func<Sprite> ValueToSprite;
         public Action<Sprite> SetValueFromSprite;
         /// <inheritdoc cref="VisualElement.ValueHandling.Bind{T}"/> 
-        public void Bind<T>(ValueHandling<T> handler) {
+        public void Bind<T>(ValueHandling<T> handler = null) {
             base.Bind(handler);
             ValueToSprite = () => handler.ValueToSprite?.Invoke(handler.Value) ?? default;
             SetValueFromSprite = sprite => handler.Value = handler.SetValueFromSprite == null ? default : handler.SetValueFromSprite(sprite);
@@ -247,7 +248,7 @@ public class TextureElement : VisualElement {
         set {
             var entity = _sprite.Entity;
             _sprite.RemoveSelf();
-            //the parameterless constructor doesn't initialize the animations dict, so adding to it would crash with NRE.
+            //the parameterless constructor doesn't initialize the animations dict, so trying to add an animation would crash with NRE.
             Sprite = new(value.Atlas, ""){Rate = 0f, Visible = false};
             entity.Add(_sprite);
             _sprite.AddLoop("idle", 0f, [value]);

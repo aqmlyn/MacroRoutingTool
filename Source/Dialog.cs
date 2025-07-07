@@ -15,7 +15,7 @@ public static class MRTDialog {
     public const string DKPrefix = "macroroutingtool_";
     public static bool TryGet(string keyPart, out string result, bool cleaned = true) {
         if (Dialog.Languages == null) {
-            Logger.Log(LogLevel.Warn, "MacroRoutingTool/Dialog", $"{nameof(MRTDialog)}.{nameof(TryGet)} was called before the game's dialog was loaded. Some dialog may not show properly as a result.\n{new StackTrace()}");
+            Logger.Log(LogLevel.Warn, MRT.LogTag("Dialog"), $"{nameof(MRTDialog)}.{nameof(TryGet)} was called before the game's dialog was loaded. Some dialog may not show properly as a result.\n{new StackTrace()}");
         } else {
             if ((cleaned ? Dialog.Language.Cleaned : Dialog.Language.Dialog).TryGetValue(keyPart, out result)) {return true;}
             if ((cleaned ? Dialog.Languages[DevPreferredLanguage].Cleaned : Dialog.Languages[DevPreferredLanguage].Dialog).TryGetValue(keyPart, out result)) {return true;}

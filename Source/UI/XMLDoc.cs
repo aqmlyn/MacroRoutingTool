@@ -5,7 +5,7 @@ namespace Celeste.Mod.MacroRoutingTool.UI;
 /// </summary>
 public static class XMLDoc {
     /// <summary>
-    /// in pixels at the resolution defined by <c>Celeste.TargetWidth</c> and <c>.TargetHeight</c>
+    /// in pixels at the resolution defined by <see cref="Monocle.Engine.Width"/> and <see cref="Monocle.Engine.Height"/>
     /// </summary>
     public const bool Unit_PxAtTargetRes = false;
 }

@@ -19,7 +19,7 @@ public static class DebugMapTweaks {
         DebugMapHooks.OnRenderBetweenRoomsAndCursor += DrawCursorBack; //important
         DebugMapHooks.LoadEntityData += PopulateEntitiesToRender;
         DebugMapHooks.Update += HoverGetRoomInfo;
-        DebugMapHooks.AfterMapCtor += LoadWhiteRect;
+        DebugMapHooks.AfterMapCtor += InitHoverText;
         DebugMapHooks.BeforeMapCtor += ResetEntitiesToRender;
     }
 
@@ -30,13 +30,11 @@ public static class DebugMapTweaks {
         DebugMapHooks.OnRenderBetweenRoomsAndCursor -= DrawCursorBack;
         DebugMapHooks.LoadEntityData -= PopulateEntitiesToRender;
         DebugMapHooks.Update -= HoverGetRoomInfo;
-        DebugMapHooks.AfterMapCtor -= LoadWhiteRect;
+        DebugMapHooks.AfterMapCtor -= InitHoverText;
         DebugMapHooks.BeforeMapCtor -= ResetEntitiesToRender;
     }
 
     public static FieldInfo CurrentSession => typeof(MapEditor).GetField("CurrentSession", BindingFlags.NonPublic | BindingFlags.Instance);
-    public static FieldInfo MousePos => typeof(MapEditor).GetField("mousePosition", BindingFlags.NonPublic | BindingFlags.Instance);
-    public static FieldInfo Rooms => typeof(MapEditor).GetField("levels", BindingFlags.NonPublic | BindingFlags.Instance);
 
     public static void RenderCurrentAsHovered(ref bool renderAsHovered, DebugMapHooks.DebugRoomArgs args) {
         object sessionObj = CurrentSession.GetValue(args.DebugMap);
@@ -76,11 +74,6 @@ public static class DebugMapTweaks {
     public static float HoverTextVSpacing = 2f;
     public static float HoverTextBorderThickness = 2f;
     public static float HoverBackOpacity = 0.6f;
-    
-    public class HoverTextItem {
-        public UIHelpers.TextElement Element = new();
-        public GetterEventProperty<string> Text = new();
-    }
 
     public static GetterEventProperty<bool> HoverTextEnabled = new(){Value = true};
 
@@ -90,78 +83,91 @@ public static class DebugMapTweaks {
     /// causing visual discrepancies that become very noticeable as the camera zooms in.
     /// </summary>
     public static MTexture WhiteRect = null;
-    public static void LoadWhiteRect(MapEditor debugMap) {
+    /// <summary>
+    /// Called to initialize hover-text-related fields when opening the debug map.
+    /// </summary>
+    /// <param name="debugMap"></param>
+    /// <remarks>
+    /// Since the <see cref="DebugMapTweaks"/> class is static, field initializers could ordinarily be used for this,
+    /// but some fields expect Celeste's assets to be loaded, and this type ends up being initialized before that happens.
+    /// This method is only called when opening the debug map, which can only occur after the engine starts, which occurs after assets are loaded. 
+    /// </remarks>
+    public static void InitHoverText(MapEditor debugMap) {
+        //textures are Celeste assets
         WhiteRect = GFX.Game["decals/generic/snow_o"]; //this texture carries in map BGs too, if there are no decals/generic/snow_o fans then i am dead
+
+        //TextElements' fonts are Celeste assets
+        HoverText = new(){
+            {HoverIDs.RoomName, new(){Color = Color.Red, Scale = Vector2.One * HoverTextScale, BorderThickness = HoverTextBorderThickness, IgnoreZoom = true}},
+            {HoverIDs.CheckpointName, new(){Color = Color.Lime, Scale = Vector2.One * HoverTextScale, BorderThickness = HoverTextBorderThickness, IgnoreZoom = true}}
+        };
+        foreach (var element in HoverText.Values) { element.ValueHandler.Bind<string>(new(){
+            ValueParser = val => val
+        }); }
     }
 
     public static void DrawHoverText(MapEditor debugMap, Camera camera) {
-        List<UIHelpers.TextElement> visibleTexts = [];
-        foreach (HoverTextItem item in HoverText.Values) {
-            item.Element.Text = item.Text.Value;
-            if (item.Element.Text != "") {visibleTexts.Add(item.Element);}
-        }
-        int visibleCount = visibleTexts.Count;
-        if (visibleCount == 0) {return;}
-        Vector2 mousePos = (Vector2)MousePos.GetValue(debugMap);
-        Vector2 drawPos = new(
-            mousePos.X + (CursorRadius + HoverTextHSpacing * 2) / camera.Zoom,
-            mousePos.Y - ((visibleCount % 2 == 0 ? HoverTextVSpacing / 2 : ActiveFont.LineHeight * HoverTextScale / 2) + ActiveFont.LineHeight * HoverTextScale * (visibleCount / 2) + HoverTextVSpacing * ((visibleCount - 1) / 2)) / camera.Zoom
-        );
-        WhiteRect.Draw(
-            new Vector2(drawPos.X - HoverTextHSpacing / camera.Zoom, drawPos.Y - HoverTextHSpacing / camera.Zoom),
-            Vector2.Zero,
-            Color.Black * HoverBackOpacity,
-            new Vector2(
-                (visibleTexts.Max(elem => ActiveFont.Measure(elem.Text).X) * HoverTextScale + HoverTextHSpacing * 2) / camera.Zoom / WhiteRect.Width,
-                (ActiveFont.LineHeight * HoverTextScale * visibleCount + HoverTextVSpacing * visibleCount + HoverTextHSpacing * 2) / camera.Zoom / WhiteRect.Width
-            )
-        );
-        foreach (UIHelpers.TextElement elem in visibleTexts) {
-            elem.Position = drawPos;
-            elem.Scale = Vector2.One * HoverTextScale / camera.Zoom;
-            elem.BorderThickness = HoverTextBorderThickness / camera.Zoom;
-            elem.Render();
-            drawPos.Y += (ActiveFont.LineHeight * HoverTextScale + HoverTextVSpacing) / camera.Zoom;
+        if (HoverTextEnabled.Value) {
+            var visibleTexts = HoverText.Values.Where(item => !string.IsNullOrWhiteSpace(item.Text));
+            int visibleCount = visibleTexts.Count();
+            if (visibleCount == 0) {return;}
+            Vector2 mousePos = debugMap.mousePosition;
+            Vector2 drawPos = new(
+                mousePos.X + (CursorRadius + HoverTextHSpacing * 2) / camera.Zoom,
+                mousePos.Y - ((visibleCount % 2 == 0 ? HoverTextVSpacing / 2 : ActiveFont.LineHeight * HoverTextScale / 2) + ActiveFont.LineHeight * HoverTextScale * (visibleCount / 2) + HoverTextVSpacing * ((visibleCount - 1) / 2)) / camera.Zoom
+            );
+            WhiteRect.Draw(
+                new Vector2(drawPos.X - HoverTextHSpacing / camera.Zoom, drawPos.Y - HoverTextHSpacing / camera.Zoom),
+                Vector2.Zero,
+                Color.Black * HoverBackOpacity,
+                new Vector2(
+                    (visibleTexts.Max(elem => ActiveFont.Measure(elem.Text).X) * HoverTextScale + HoverTextHSpacing * 2) / camera.Zoom / WhiteRect.Width,
+                    (ActiveFont.LineHeight * HoverTextScale * visibleCount + HoverTextVSpacing * visibleCount + HoverTextHSpacing * 2) / camera.Zoom / WhiteRect.Width
+                )
+            );
+            foreach (var elem in visibleTexts) {
+                elem.Position = drawPos;
+                elem.Render();
+                drawPos.Y += (ActiveFont.LineHeight * HoverTextScale + HoverTextVSpacing) / camera.Zoom;
+            }
         }
     }
-  #endregion
+    #endregion
 
-  #region hover text items
-    public static Dictionary<string, HoverTextItem> HoverText = new(){
-        {HoverIDs.RoomName, new(){
-            Element = new(){Color = Color.Red}
-        }},
-        {HoverIDs.CheckpointName, new() {
-            Element = new(){Color = Color.Lime}
-        }}
-    };
+    #region hover text items
+    public static Dictionary<string, TextElement> HoverText = [];
 
     public static void HoverGetRoomInfo(MapEditor debugMap) {
         string hoveredName = "";
         string hoveredCheckpoint = "";
-        ModeProperties map = UIHelpers.GetAreaData(debugMap).Mode[(int)UIHelpers.GetAreaKey(debugMap).Mode];
+        var chapter = UIHelpers.GetAreaData(debugMap);
+        var side = (int)UIHelpers.GetAreaKey(debugMap).Mode;
+        ModeProperties map = chapter.Mode[side];
         CheckpointData[] checkpoints = map.Checkpoints;
         string firstRoom = map.MapData.StartLevel().Name;
-        foreach (LevelTemplate room in (List<LevelTemplate>)Rooms.GetValue(debugMap)) {
-            if (room.Check((Vector2)MousePos.GetValue(debugMap))) {
+        foreach (LevelTemplate room in debugMap.levels) {
+            if (room.Check(debugMap.mousePosition)) {
                 //if cursor is hovering over any room, show that room's name
                 hoveredName = room.Name;
-                //if hovered room is first room, show start "checkpoint" name (TODO i think some helpers let u rename it, want to support that later)
-                if (firstRoom == hoveredName) {
-                    hoveredCheckpoint = MRTDialog.Get("overworld_start");
-                    HoverText[HoverIDs.CheckpointName].Element.Color = Color.Aqua;
-                }
-                //if hovered room is a checkpoint, show that checkpoint's name
-                CheckpointData checkpoint = checkpoints.FirstOrDefault(cp => cp.Level == hoveredName, null);
-                if (checkpoint != null) {
-                    hoveredCheckpoint = MRTDialog.Get(checkpoint.Name);
-                    HoverText[HoverIDs.CheckpointName].Element.Color = Color.Lime;
+                if (checkpoints != null) {
+                    //if the level has checkpoints and hovered room is first room, show start "checkpoint" name
+                    //TODO i've heard AltSidesHelper let u rename start before vanilla Everest did, want to support that later
+                    if (firstRoom == hoveredName) {
+                        hoveredCheckpoint = MRTDialog.TryGet($"{chapter.SID.DialogKeyify()}_{(char)('A' + side)}_start", out string result) ? result : MRTDialog.Get("overworld_start");
+                        HoverText[HoverIDs.CheckpointName].Color = Color.Aqua;
+                    }
+                    //if hovered room is a checkpoint, show that checkpoint's name
+                    CheckpointData checkpoint = checkpoints?.FirstOrDefault(cp => cp.Level == hoveredName, null);
+                    if (checkpoint != null) {
+                        hoveredCheckpoint = MRTDialog.Get(checkpoint.Name);
+                        HoverText[HoverIDs.CheckpointName].Color = Color.Lime;
+                    }
                 }
                 break;
             }
         }
-        HoverText[HoverIDs.RoomName].Text.Value = hoveredName;
-        HoverText[HoverIDs.CheckpointName].Text.Value = hoveredCheckpoint;
+        HoverText[HoverIDs.RoomName].Text = hoveredName;
+        HoverText[HoverIDs.CheckpointName].Text = hoveredCheckpoint;
     }
   #endregion
 
@@ -183,11 +189,11 @@ public static class DebugMapTweaks {
     public static Dictionary<string, Dictionary<string, List<DebugEntityData>>> EntitiesToRender = [];
 
     public static Dictionary<string, ulong> EntityCounts = [];
-    public static Action InitCount(string type) => () => EntityCounts.EnsureSet(type, 1u);
+    public static Action InitCount(string type) => () => EntityCounts[type] = 1u;
     public static Func<LevelTemplate, DebugEntityData, string> Count(string type) => (_, _) => {
         ulong count = EntityCounts.EnsureGet(type, 1u);
         string text = count.ToString();
-        EntityCounts.EnsureSet(type, ++count);
+        EntityCounts[type] = ++count;
         return text;
     };
 

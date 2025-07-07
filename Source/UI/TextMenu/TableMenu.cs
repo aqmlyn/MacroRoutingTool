@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Xna.Framework;
+using Monocle;
 
 namespace Celeste.Mod.MacroRoutingTool.UI;
 
@@ -13,7 +14,7 @@ namespace Celeste.Mod.MacroRoutingTool.UI;
 /// <item>Its items are laid out in a table format. It can have more than two columns. Cells cannot literally span multiple lines, but items can be made to appear as such by adding multiple tables to the same menu.</item>
 /// </list>
 /// </summary>
-public class TableMenu : TextMenu {
+public partial class TableMenu : TextMenu {
     /// <summary>
     /// Combined width of all columns in this <see cref="TableMenu"/>, <inheritdoc cref="XMLDoc.Unit_PxAtTargetRes"/>. 
     /// </summary>
@@ -304,7 +305,8 @@ public class TableMenu : TextMenu {
         /// </summary>
         public float? _justifyX = null;
         /// <summary>
-        /// X coordinate of this item's origin relative to its bounding box. 0 is on the left edge, 1 is on the right edge.
+        /// X coordinate of this item's origin relative to its bounding box. 0 is on the left edge, 1 is on the right edge.<br/>
+        /// Assign null to use the column's justify value instead.
         /// </summary>
         public float? JustifyX {
             get {
@@ -320,7 +322,8 @@ public class TableMenu : TextMenu {
         /// </summary>
         public float? _justifyY = null;
         /// <summary>
-        /// Y coordinate of this item's origin relative to its bounding box. 0 is on the top edge, 1 is on the bottom edge.
+        /// Y coordinate of this item's origin relative to its bounding box. 0 is on the top edge, 1 is on the bottom edge.<br/>
+        /// Assign null to use the row's justify value instead.
         /// </summary>
         public float? JustifyY {
             get {
@@ -463,8 +466,7 @@ public class TableMenu : TextMenu {
             return base.LeftWidth();
         }
 
-        public override float Height()
-        {
+        public override float Height() {
             if (Container != null && Container is TableMenu table) {
                 return table.RowFormats[Row].Measure;
             }
@@ -475,7 +477,7 @@ public class TableMenu : TextMenu {
     /// <summary>
     /// Get a list of all <see cref="Row"/> items in this <see cref="TableMenu"/>. 
     /// </summary>
-    public List<Row> Rows => [.. Items.Where(item => item is Row).Cast<Row>()];
+    public List<Row> Rows => [.. Items.OfType<Row>()];
 
     /// <summary>
     /// Create a new <see cref="Row"/>, add it to this <see cref="TableMenu"/>'s <see cref="TextMenu.Items"/>, and return it.   
@@ -550,7 +552,7 @@ public class TableMenu : TextMenu {
 
         public override void Render(Vector2 position, bool highlighted) {
             var table = Container as TableMenu;
-            if (position.Y > Celeste.TargetHeight || position.Y - table?.Y > table?.Height) { return; } //if row is below display area, cull row
+            if (position.Y > Engine.Height || position.Y - table?.Y > table?.Height) { return; } //if row is below display area, cull row
             var height = Height();
             if (position.Y + height < 0f || position.Y + height < table?.Y) { return; } //if row is above display area, cull row
             Vector2 origPosition = new(position.X, position.Y);
@@ -558,9 +560,9 @@ public class TableMenu : TextMenu {
                 var width = item.LeftWidth();
                 if (item.MarginTop + item.MarginBottom > height || item.MarginLeft + item.MarginRight > width) { continue; } //if item's margins leave no room, cull item
                 var top = position.Y + (item.MarginTop ?? 0f);
-                if (top > Celeste.TargetHeight || top - table?.Y > table?.Height) { continue; } //if item is below display area only due to top margin, cull item
+                if (top > Engine.Height || top - table?.Y > table?.Height) { continue; } //if item is below display area only due to top margin, cull item
                 position.X += item.MarginLeft ?? 0f;
-                if (position.X > Celeste.TargetWidth || position.X - table?.X > table?.Width) { return; } //if item is right of display area, cull rest of row
+                if (position.X > Engine.Width || position.X - table?.X > table?.Width) { return; } //if item is right of display area, cull rest of row
                 if (position.X + width < 0f || position.X + width < table?.X) { continue; } //if item is left of display area, cull item
                 item.Render(new(position.X + width * (item.JustifyX ?? 0.5f), top + height * (item.JustifyY ?? 0.5f)), highlighted);
                 position.X += width + (item.MarginRight ?? 0f);

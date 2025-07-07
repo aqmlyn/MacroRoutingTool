@@ -78,8 +78,7 @@ public abstract class MemberEditor {
 
         public Func<TValue, string> OptionLabeller = val => val.ToString();
 
-        public override MultiDisplayData.TextMenuOption<TValue> Create(object init = default)
-        {
+        public override MultiDisplayData.TextMenuOption<TValue> Create(object init = default) {
             //initialize menu item
             MultiDisplayData.TextMenuOption<TValue> option = new(LabelGetter?.Invoke() ?? "") {
                 OnValueChange = val => {

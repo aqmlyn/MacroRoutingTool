@@ -101,7 +101,7 @@ public static class UIHelpers {
     /// <see cref="Camera"/>'s zoom is currently affecting it.
     /// </remarks>
     public static void OnSpriteBatchBegin(SpriteBatch batch, float curZoom) {
-        SpriteBatches.EnsureGet(batch, []).EnsureSet(SpriteBatchZoom, curZoom * Celeste.TargetWidth / Celeste.GameWidth / Settings.Instance.WindowScale);
+        SpriteBatches.EnsureGet(batch, [])[SpriteBatchZoom] = curZoom * Engine.Width / Engine.ViewWidth;
     }
     public static void OnSpriteBatchEnd(SpriteBatch batch) {
         SpriteBatches.Remove(batch);
@@ -111,43 +111,7 @@ public static class UIHelpers {
     public static AreaKey GetAreaKey(MapEditor debugMap = null) => (AreaKey)AreaGetter.GetValue(debugMap ?? (MapEditor)Engine.Scene);
     public static AreaData GetAreaData(MapEditor debugMap = null) => AreaData.Get(GetAreaKey(debugMap));
 
-    public class TextureElement {
-        public MTexture Texture = null;
-        public Vector2 Position = Vector2.Zero;
-        public Vector2 Justify = Vector2.Zero;
-        public Color Color = Color.White;
-        public Vector2 Scale = Vector2.One;
-        public float Rotation = 0f;
-        public SpriteEffects Flip = SpriteEffects.None;
-        public float? BorderThickness;
-        public Color BorderColor = Color.Black;
-
-        public bool IgnoreCameraZoom = false;
-        public Camera Camera = null;
-
-        public void Render() {
-            if (Texture == null) {return;}
-            //copied from vanilla MTexture.DrawOutlineJustified decomp and adjusted to take outline arguments into account
-            float scaleFix = Texture.ScaleFix;
-            Vector2 scale = Scale * scaleFix;
-            if (IgnoreCameraZoom) {scale /= Camera.Zoom;}
-            Rectangle clipRect = Texture.ClipRect;
-            Vector2 origin = (new Vector2(Texture.Width * Justify.X, Texture.Height * Justify.Y) - Texture.DrawOffset) / scaleFix;
-            if (BorderThickness != null) {
-                float outlineWidth = (float)BorderThickness;
-                if (IgnoreCameraZoom) {outlineWidth /= Camera.Zoom;}
-                for (float i = -1; i <= 1; i++) {
-                    for (float j = -1; j <= 1; j ++) {
-                        if (i != 0 || j != 0) {
-                            Draw.SpriteBatch.Draw(Texture.Texture.Texture_Safe, Position + new Vector2(i * outlineWidth, j * outlineWidth), clipRect, BorderColor, Rotation, origin, scale, Flip, 0f);
-                        }
-                    }
-                }
-            }
-            Draw.SpriteBatch.Draw(Texture.Texture.Texture_Safe, Position, clipRect, Color, Rotation, origin, scale, Flip, 0f);
-        }
-    }
-
+    //all remaining uses of this are related to ListItems, which are being replaced
     public class TextElement {
         public TextMenu.Item Container = null;
         public string Text = "";
@@ -194,6 +158,6 @@ public static class UIHelpers {
         }
 
         //if both are acute, closest point is on the line that passes through p1 and p2
-        return (float)(Math.Abs(Math.Sin(Math.Abs((p2 - p1).Angle() + Math.PI * 2 - (self - p1).Angle() + Math.PI * 2))) * (self - p1).Length());
+        return (float)(Math.Abs(Math.Sin((p2 - p1).Angle() - (self - p1).Angle())) * (self - p1).Length());
     }
 }

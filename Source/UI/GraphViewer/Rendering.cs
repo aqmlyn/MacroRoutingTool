@@ -93,7 +93,8 @@ public static partial class GraphViewer {
         );
 
         //get map + levelset info
-        string mapTitle = MRTDialog.Get(UIHelpers.GetAreaData().Name.DialogKeyify());
+        var area = AreaData.Get(MapEditor.area);
+        string mapTitle = MRTDialog.Get(area.Name.DialogKeyify());
         string levelsetTitle = "";
         string levelsetSubtitle = "";
         if (false /*TODO CollabUtils2 support -- check if this map is in a lobby*/) {
@@ -101,18 +102,18 @@ public static partial class GraphViewer {
         } else {
             //campaign
             bool multipleChapters = false;
-            if (UIHelpers.GetAreaData().IsOfficialLevelSet()) {
+            if (area.IsOfficialLevelSet()) {
                 levelsetTitle = MRTDialog.Get("levelset_celeste");
                 multipleChapters = true;
-            } else if (UIHelpers.GetAreaData().LevelSet == "") {
+            } else if (area.LevelSet == "") {
                 levelsetTitle = MRTDialog.Get("levelset_"); //"Uncategorized" in English
             } else {
-                levelsetTitle = MRTDialog.Get(UIHelpers.GetAreaData().LevelSet.DialogKeyify());
-                multipleChapters = AreaData.Areas.Count(ad => ad.SID.StartsWith(UIHelpers.GetAreaData().LevelSet)) > 1;
+                levelsetTitle = MRTDialog.Get(area.LevelSet.DialogKeyify());
+                multipleChapters = AreaData.Areas.Count(ad => !ad.Interlude && ad.SID.StartsWith(area.LevelSet)) > 1;
             }
-            if (multipleChapters && !UIHelpers.GetAreaData().Interlude) {
+            if (multipleChapters && !area.Interlude) {
                 //don't show chapter number if the map is a standalone or interlude
-                levelsetSubtitle = MRTDialog.Get("area_chapter", false).Replace("{x}", UIHelpers.GetAreaKey().ChapterIndex.ToString());
+                levelsetSubtitle = MRTDialog.Get("area_chapter", false).Replace("{x}", MapEditor.area.ChapterIndex.ToString());
             }
         }
 
@@ -121,15 +122,15 @@ public static partial class GraphViewer {
         //map title banner
         //using the actual texture (GFX.Gui["areaselect/title"]) is impractical because it's slightly angled and includes the shadow.
         //so we recreate our own banner instead! TODO i dont like it just being a rectangle but i have other priorities for now
-        bool mapHasSubtitle = UIHelpers.GetAreaData().Mode.Length > 1 && UIHelpers.GetAreaKey().Mode != AreaMode.Normal;
+        bool mapHasSubtitle = area.Mode.Length > 1 && MapEditor.area.Mode != AreaMode.Normal;
         float levelBannerExtraHeight = 0f;
         if (mapHasSubtitle) {
             levelBannerExtraHeight = subtitleBackTexture.Height - MarginV * 2;
         }
         //main back
-        Draw.Rect(Celeste.TargetCenter.X - LevelBannerWidth / 2, 0, LevelBannerWidth, HeadbarHeight + levelBannerExtraHeight + MarginV, UIHelpers.GetAreaData().TitleBaseColor);
-        Draw.Rect(Celeste.TargetCenter.X - LevelBannerWidth / 2 - LevelBannerMarginH, 0, LevelBannerMarginH, HeadbarHeight + levelBannerExtraHeight + MarginV, UIHelpers.GetAreaData().TitleAccentColor);
-        Draw.Rect(Celeste.TargetCenter.X + LevelBannerWidth / 2, 0, LevelBannerMarginH, HeadbarHeight + levelBannerExtraHeight + MarginV, UIHelpers.GetAreaData().TitleAccentColor);
+        Draw.Rect(Celeste.TargetCenter.X - LevelBannerWidth / 2, 0, LevelBannerWidth, HeadbarHeight + levelBannerExtraHeight + MarginV, area.TitleBaseColor);
+        Draw.Rect(Celeste.TargetCenter.X - LevelBannerWidth / 2 - LevelBannerMarginH, 0, LevelBannerMarginH, HeadbarHeight + levelBannerExtraHeight + MarginV, area.TitleAccentColor);
+        Draw.Rect(Celeste.TargetCenter.X + LevelBannerWidth / 2, 0, LevelBannerMarginH, HeadbarHeight + levelBannerExtraHeight + MarginV, area.TitleAccentColor);
         //borders
         Draw.Rect(Celeste.TargetCenter.X - LevelBannerWidth / 2 - LevelBannerMarginH - MarginV, HeadbarHeight + levelBannerExtraHeight + MarginV, LevelBannerWidth + LevelBannerMarginH * 2 + MarginV * 2, MarginV, Color.Black);
         Draw.Rect(Celeste.TargetCenter.X - LevelBannerWidth / 2 - LevelBannerMarginH - MarginV, 0, MarginV, HeadbarHeight + levelBannerExtraHeight + MarginV, Color.Black);
@@ -137,10 +138,10 @@ public static partial class GraphViewer {
         //text
         Vector2 mapTitleOrigSize = ActiveFont.Measure(mapTitle);
         float mapTitleScale = Math.Min((LevelBannerWidth - LevelBannerMarginH * 2) / mapTitleOrigSize.X, (HeadbarHeight - MarginV * 3) / mapTitleOrigSize.Y);
-        ActiveFont.Draw(mapTitle, new Vector2(Celeste.TargetCenter.X, MarginV * 2), new Vector2(0.5f, 0f), Vector2.One * mapTitleScale, UIHelpers.GetAreaData().TitleTextColor);
+        ActiveFont.Draw(mapTitle, new Vector2(Celeste.TargetCenter.X, MarginV * 2), new Vector2(0.5f, 0f), Vector2.One * mapTitleScale, area.TitleTextColor);
         if (mapHasSubtitle) {
-            string mapSubtitle = MRTDialog.ChapterSideTexts[UIHelpers.GetAreaKey().Mode]();
-            ActiveFont.Draw(mapSubtitle, new Vector2(Celeste.TargetCenter.X, HeadbarHeight - MarginV), new Vector2(0.5f, 0f), Vector2.One * levelBannerExtraHeight / ActiveFont.Measure(mapSubtitle).Y, UIHelpers.GetAreaData().TitleAccentColor);
+            string mapSubtitle = MRTDialog.ChapterSideTexts[MapEditor.area.Mode]();
+            ActiveFont.Draw(mapSubtitle, new Vector2(Celeste.TargetCenter.X, HeadbarHeight - MarginV), new Vector2(0.5f, 0f), Vector2.One * levelBannerExtraHeight / ActiveFont.Measure(mapSubtitle).Y, area.TitleAccentColor);
         }
 
         //levelset title

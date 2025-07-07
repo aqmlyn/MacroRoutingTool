@@ -48,12 +48,13 @@ public class MultiDisplayData {
     public static void EnableAllHooks() {
         //hooking methods of generic classes: https://stackoverflow.com/questions/73835919
         //new ILHook(typeof(TextMenu.Option<>).GetMethod..., ...) will NOT work. the constructor won't find the instructions to populate the ILContext with. (i think. the error message is really vague.)
+        //same for typeof(TextMenu).GetNestedType("Option`1").GetMethod...
         //it also won't work for finding IL instructions, e.g. instr.MatchCall(typeof(TextMenu.Option<>).GetMethod...)
         //using dummy type arguments like below DOES work, but the hooks somehow get disabled after like a second. i have no idea why, so i gave up and just copied the option class instead
-
-        ILTextMenuGetScrollTargetY = new(typeof(TextMenu).GetMethod("get_" + nameof(TextMenu.ScrollTargetY)), new(EnableILTextMenuGetScrollTargetY));
-        //ILTextMenuOptionRender = new(typeof(TextMenu.Option<object>).GetMethod(nameof(TextMenu.Option<object>.Render)), new(EnableILTextMenuOptionRender));
-        //ILTextMenuOptionHeight = new(typeof(TextMenu.Option<object>).GetMethod(nameof(TextMenu.Option<object>.Height)), new(EnableILTextMenuItemHeight));
+        ILTextMenuGetScrollTargetY = new(typeof(TextMenu).GetMethod("get_" + nameof(TextMenu.ScrollTargetY)), EnableILTextMenuGetScrollTargetY);
+        //var optionType = typeof(TextMenu).GetNestedType(nameof(TextMenu.Option<object>) + "`1").MakeGenericType([typeof(object)]);
+        //ILTextMenuOptionRender = new(optionType.GetMethod(nameof(TextMenu.Option<object>.Render)), EnableILTextMenuOptionRender);
+        //ILTextMenuOptionHeight = new(optionType.GetMethod(nameof(TextMenu.Option<object>.Height)), EnableILTextMenuItemHeight);
         IL.Celeste.TextMenu.renderItems += EnableILTextMenuRenderItems;
         IL.Celeste.TextMenu.Button.Render += EnableILTextMenuButtonRender;
         IL.Celeste.TextMenu.Header.Render += EnableILTextMenuHeaderRender;

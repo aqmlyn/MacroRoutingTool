@@ -9,18 +9,21 @@ namespace Celeste.Mod.MacroRoutingTool;
 public static class Utils {
     public static int BoolToInt(bool val) => val ? 1 : 0;
 
+    /// <summary>
+    /// If this dictionary has an entry with the given key, return the entry's value.<br/>
+    /// Otherwise, add an entry with the given key and given fallback value, and return the fallback value.
+    /// </summary>
+    /// <typeparam name="TKey">Type of the dictionary's keys.</typeparam>
+    /// <typeparam name="TValue">Type of the dictionary's values.</typeparam>
+    /// <param name="dict">The dictionary an entry is to be found or created in.</param>
+    /// <param name="key">The key to try finding a value for.</param>
+    /// <param name="fallback">The value to insert and return if the key is not found.<br/>Optional, defaults to the type's <c>default</c> value.</param>
     public static TValue EnsureGet<TKey, TValue>(this Dictionary<TKey, TValue> dict, TKey key, TValue fallback = default) {
         if (dict.TryGetValue(key, out TValue result)) {
             return result;
         } else {
             dict.Add(key, fallback);
             return fallback;
-        }
-    }
-
-    public static void EnsureSet<TKey, TValue>(this Dictionary<TKey, TValue> dict, TKey key, TValue value) {
-        if (!dict.TryAdd(key, value)) {
-            dict[key] = value;
         }
     }
     
