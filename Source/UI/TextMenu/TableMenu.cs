@@ -22,7 +22,7 @@ public partial class TableMenu : TextMenu {
     /// <summary>
     /// Width of the display area for this <see cref="TableMenu"/>, <inheritdoc cref="XMLDoc.Unit_PxAtTargetRes"/>. 
     /// </summary>
-    public float DisplayWidth;
+    public float DisplayWidth = float.MaxValue;
     /// <inheritdoc cref="DisplayWidth"/>
     public new float Width {
         get => DisplayWidth;
@@ -36,7 +36,7 @@ public partial class TableMenu : TextMenu {
     /// <summary>
     /// Height of the display area for this <see cref="TableMenu"/>, <inheritdoc cref="XMLDoc.Unit_PxAtTargetRes"/>. 
     /// </summary>
-    public float DisplayHeight;
+    public float DisplayHeight = float.MaxValue;
     /// <inheritdoc cref="DisplayHeight"/>
     public new float Height {
         get => DisplayHeight;
@@ -44,7 +44,7 @@ public partial class TableMenu : TextMenu {
     }
 
     /// <summary>
-    /// Representation of this <see cref="TableMenu"/> as an item in another <see cref="TextMenu"/> 
+    /// Representation of a <see cref="TableMenu"/> as an item in another <see cref="TextMenu"/> 
     /// (which may or may not itself be a <see cref="TableMenu"/>). 
     /// </summary>
     public class AsItem : Item {
@@ -52,6 +52,39 @@ public partial class TableMenu : TextMenu {
         /// The <see cref="TableMenu"/> this item represents.
         /// </summary>
         public TableMenu Menu;
+
+        /// <inheritdoc cref="AsItem"/> 
+        public AsItem() {
+            IncludeWidthInMeasurement = false;
+        }
+
+        /// <summary>
+        /// Called when <see cref="Menu"/> is to gain control.
+        /// </summary>
+        public void GainFocus() {
+            if (Container != null) {
+                Container.Focused = false;
+                Container.RenderAsFocused = true;
+            }
+            Menu.Focused = true;
+            Menu.RenderAsFocused = false;
+            Menu.FirstSelection();
+            foreach (var row in Menu.Rows) {
+                row.HoverIndex = row.FirstPossibleHover;
+            }
+        }
+
+        /// <summary>
+        /// Called when <see cref="Menu"/> is to lose control.
+        /// </summary>
+        public void LoseFocus() {
+            Menu.RenderAsFocused = true;
+            Menu.Focused = false;
+            if (Container != null) {
+                Container.RenderAsFocused = false;
+                Container.Focused = true;
+            }
+        }
 
         /// <summary>
         /// Determines whether this item can be hovered.
@@ -61,27 +94,25 @@ public partial class TableMenu : TextMenu {
         public override float LeftWidth() => Menu.AllowShrinkWidth ? Math.Min(Menu.FullWidth, Menu.DisplayWidth) : Menu.DisplayWidth;
         public override float Height() => Menu.AllowShrinkHeight ? Math.Min(Menu.FullHeight, Menu.DisplayHeight) : Menu.DisplayHeight;
         public override void Render(Vector2 position, bool highlighted) {
-            Menu.Position = position;
+            Menu.Position.X = position.X + Menu.Width * Menu.Justify.X;
+            Menu.Position.Y = position.Y + Menu.Height * (Menu.Justify.Y - 0.5f);
             Menu.Render();
         }
 
         public override void Update() {
             Selectable = SelectableCheck();
+            if (!Menu.Focused && Container.Current == this) {
+                GainFocus();
+            }
             if (Menu.Focused) {
-                if (Input.MenuUp.Pressed && Menu.Selection == Menu.FirstPossibleSelection && Container != null && Container.FirstPossibleSelection < Container.Items.IndexOf(this)) {
+                if (Input.MenuUp.Pressed && (!Selectable || Menu.Selection == Menu.FirstPossibleSelection) && Container != null && Container.FirstPossibleSelection < Container.Items.IndexOf(this)) {
                     Input.MenuUp.ConsumePress();
-                    Menu.RenderAsFocused = true;
-                    Menu.Focused = false;
-                    Container.RenderAsFocused = false;
-                    Container.Focused = true;
+                    LoseFocus();
                     Container.MoveSelection(-1);
                 }
-                if (Input.MenuDown.Pressed && Menu.Selection == Menu.LastPossibleSelection && Container != null && Container.LastPossibleSelection > Container.Items.IndexOf(this)) {
+                if (Input.MenuDown.Pressed && (!Selectable || Menu.Selection == Menu.LastPossibleSelection) && Container != null && Container.LastPossibleSelection > Container.Items.IndexOf(this)) {
                     Input.MenuDown.ConsumePress();
-                    Menu.RenderAsFocused = true;
-                    Menu.Focused = false;
-                    Container.RenderAsFocused = false;
-                    Container.Focused = true;
+                    LoseFocus();
                     Container.MoveSelection(1);
                 }
             }
@@ -97,15 +128,15 @@ public partial class TableMenu : TextMenu {
         public bool Collapsed;
 
         /// <summary>
-        /// The <see cref="UITextElement"/> shown when this item is collapsed.
+        /// The <see cref="TextElement"/> shown when this item is collapsed.
         /// </summary>
-        public UITextElement CollapsedLabel = new();
+        public TextElement CollapsedLabel = new(){Justify = new(0f, 0.5f), BorderThickness = 2f};
 
         /// <summary>
-        /// Whether to automatically set <see cref="CollapsedLabel"/>'s <see cref="UITextElement.State"/> based on whether
+        /// Whether to automatically set <see cref="CollapsedLabel"/>'s color based on whether
         /// this item is currently hovered.  
         /// </summary>
-        public bool AutoTextState = true;
+        public bool CollapsedAutoColor = true;
 
         public override bool SelectableCheck() => Collapsed || base.SelectableCheck();
         public override float LeftWidth() => Collapsed ? CollapsedLabel.Font.Measure(CollapsedLabel.Text).X : base.LeftWidth();
@@ -114,27 +145,19 @@ public partial class TableMenu : TextMenu {
         public override void ConfirmPressed() {
             if (Collapsed) {
                 Collapsed = false;
-                if (Container != null) {
-                    Container.Focused = false;
-                    Container.RenderAsFocused = true;
-                }
-                Menu.Focused = true;
-                Menu.RenderAsFocused = false;
-                Menu.FirstSelection();
-                foreach (var row in Menu.Rows) {
-                    row.HoverIndex = row.FirstPossibleHover;
-                }
+                GainFocus();
             } else {
                 base.ConfirmPressed();
             }
         }
 
         public override void Update() {
-            SelectableCheck();
+            Selectable = SelectableCheck();
             if (Collapsed) {
                 CollapsedLabel.Update();
-            } else if (Input.MenuCancel.Pressed) {
+            } else if (Menu.Focused && Input.MenuCancel.Pressed) {
                 Input.MenuCancel.ConsumePress();
+                LoseFocus();
                 Collapsed = true;
                 Update();
             } else {
@@ -145,7 +168,7 @@ public partial class TableMenu : TextMenu {
         public override void Render(Vector2 position, bool highlighted) {
             if (Collapsed) {
                 CollapsedLabel.Position = position;
-                if (AutoTextState) { CollapsedLabel.State = highlighted ? UITextElement.States.Hovered : UITextElement.States.Idle; }
+                if (CollapsedAutoColor) { CollapsedLabel.Color = highlighted ? Container.HighlightColor : Color.White; }
                 CollapsedLabel.Render();
             } else {
                 base.Render(position, highlighted);
@@ -194,7 +217,7 @@ public partial class TableMenu : TextMenu {
         /// </summary>
         public virtual float Measure {
             get => _measure;
-            set { MinMeasure = MaxMeasure = value; }
+            set { MinMeasure = MaxMeasure = _measure = value; }
         }
 
         /// <summary>
@@ -239,22 +262,23 @@ public partial class TableMenu : TextMenu {
         foreach (var row in Rows) {
             foreach (var cell in row.Items) {
                 if (cell != null) {
-                    var rowFormat = RowFormats[cell.Row];
+                    var rowFormat = RowFormats.EnsureGet(cell.Row, _ => new());
                     rowFormat._measure = Math.Max(rowFormat._measure, Math.Max(rowFormat.MinMeasure ?? 0f, Math.Min(rowFormat.MaxMeasure ?? float.PositiveInfinity, cell.UnrestrictedHeight())));
-                    var columnFormat = ColumnFormats[cell.Column];
+                    var columnFormat = ColumnFormats.EnsureGet(cell.Column, _ => new());
                     columnFormat._measure = Math.Max(columnFormat._measure, Math.Max(columnFormat.MinMeasure ?? 0f, Math.Min(columnFormat.MaxMeasure ?? float.PositiveInfinity, cell.UnrestrictedWidth())));
                 }
             }
         }
-        
+
         //if either axis's new full cross measure is less than its display cross measure and that isn't allowed,
         //expand that axis to fill the display measure
-        if (!AllowShrinkWidth && FullWidth < DisplayWidth) {
+        var fullWidth = FullWidth;
+        if (!AllowShrinkWidth && fullWidth < DisplayWidth) {
             var expandableFormats = ColumnFormats.Where(format => format._measure < format.MaxMeasure).ToList();
             while (expandableFormats.Count != 0) {
                 int i = 0;
                 while (i < expandableFormats.Count) {
-                    var desiredExpansionRatio = DisplayWidth / FullWidth;
+                    var desiredExpansionRatio = DisplayWidth / (fullWidth = FullWidth);
                     var sumOfExpandables = expandableFormats.Aggregate(0f, (sum, format) => sum += format._measure);
                     var newMeasure = expandableFormats[i]._measure * (expandableFormats[i]._measure / sumOfExpandables) * desiredExpansionRatio;
                     if (newMeasure > (expandableFormats[i].MaxMeasure ?? float.PositiveInfinity)) {
@@ -267,12 +291,13 @@ public partial class TableMenu : TextMenu {
                 }
             }
         }
-        if (!AllowShrinkHeight && FullHeight < DisplayHeight) {
+        var fullHeight = FullHeight;
+        if (!AllowShrinkHeight && fullHeight < DisplayHeight) {
             var expandableFormats = RowFormats.Where(format => format._measure < format.MaxMeasure).ToList();
             while (expandableFormats.Count != 0) {
                 int i = 0;
                 while (i < expandableFormats.Count) {
-                    var desiredExpansionRatio = DisplayHeight / FullHeight;
+                    var desiredExpansionRatio = DisplayHeight / (fullHeight = FullHeight);
                     var sumOfExpandables = expandableFormats.Aggregate(0f, (sum, format) => sum += format._measure);
                     var newMeasure = expandableFormats[i]._measure * (expandableFormats[i]._measure / sumOfExpandables) * desiredExpansionRatio;
                     if (newMeasure > (expandableFormats[i].MaxMeasure ?? float.PositiveInfinity)) {
@@ -285,6 +310,9 @@ public partial class TableMenu : TextMenu {
                 }
             }
         }
+
+        base.Width = Math.Min(fullWidth, DisplayWidth);
+        base.Height = Math.Min(fullHeight, DisplayHeight);
     }
 
     /// <summary>
@@ -485,6 +513,7 @@ public partial class TableMenu : TextMenu {
     public Row AddRow() {
         Row row = new(){Container = this};
         Items.Add(row);
+        Add(row.SelectWiggler = new()); //only want individual items to wiggle, not whole rows. but SelectWiggler being null crashes the game
         return row;
     }
 
@@ -528,6 +557,9 @@ public partial class TableMenu : TextMenu {
             Items.Add(item);
             if (Container != null) {
                 item.Container = Container;
+                //bigger movement than vanilla items since it won't always be obvious where the hover went
+                Container.Add([item.SelectWiggler = Wiggler.Create(0.25f, 4f)]);
+                item.SelectWiggler.UseRawDeltaTime = true;
                 if (Container is TableMenu table) {
                     item.Row = table.Rows.IndexOf(this);
                     item.Column = Items.Count - 1;
@@ -551,21 +583,28 @@ public partial class TableMenu : TextMenu {
         }
 
         public override void Render(Vector2 position, bool highlighted) {
-            var table = Container as TableMenu;
-            if (position.Y > Engine.Height || position.Y - table?.Y > table?.Height) { return; } //if row is below display area, cull row
-            var height = Height();
-            if (position.Y + height < 0f || position.Y + height < table?.Y) { return; } //if row is above display area, cull row
             Vector2 origPosition = new(position.X, position.Y);
-            foreach (var item in Items) {
-                var width = item.LeftWidth();
-                if (item.MarginTop + item.MarginBottom > height || item.MarginLeft + item.MarginRight > width) { continue; } //if item's margins leave no room, cull item
-                var top = position.Y + (item.MarginTop ?? 0f);
-                if (top > Engine.Height || top - table?.Y > table?.Height) { continue; } //if item is below display area only due to top margin, cull item
-                position.X += item.MarginLeft ?? 0f;
-                if (position.X > Engine.Width || position.X - table?.X > table?.Width) { return; } //if item is right of display area, cull rest of row
-                if (position.X + width < 0f || position.X + width < table?.X) { continue; } //if item is left of display area, cull item
-                item.Render(new(position.X + width * (item.JustifyX ?? 0.5f), top + height * (item.JustifyY ?? 0.5f)), highlighted);
-                position.X += width + (item.MarginRight ?? 0f);
+            var height = Height();
+            position.Y -= height / 2f; //TextMenus expect items to be rendering text with justify.Y = 0.5f, but a table's rows start from the top left
+            if (Container is TableMenu table) {
+                var tableTopLeft = new Vector2(table.Position.X - table.Justify.X * table.Width, table.Position.Y - table.Justify.Y * table.Height);
+                if (position.Y > Engine.Height || position.Y - tableTopLeft.Y > table.Height) { return; } //if row is below display area, cull row
+                if (position.Y + height < 0f || position.Y + height < tableTopLeft.Y) { return; } //if row is above display area, cull row
+                for (int column = 0; column < Items.Count; column++) {
+                    var item = Items[column];
+                    var width = table.ColumnFormats[column].Measure;
+                    if (item != null) {
+                        if (item.MarginTop + item.MarginBottom > height || item.MarginLeft + item.MarginRight > width) { continue; } //if item's margins leave no room, cull item
+                        var top = position.Y + (item.MarginTop ?? 0f);
+                        if (top > Engine.Height || top - tableTopLeft.Y > table.Height) { continue; } //if item is below display area only due to top margin, cull item
+                        position.X += item.MarginLeft ?? 0f;
+                        if (position.X > Engine.Width || position.X - tableTopLeft.X > table.Width) { return; } //if item is right of display area, cull rest of row
+                        if (position.X + width < 0f || position.X + width < tableTopLeft.X) { continue; } //if item is left of display area, cull item
+                        item.Render(new(position.X + width * (item.JustifyX ?? 0.5f), top + height * (item.JustifyY ?? 0.5f)), highlighted);
+
+                    }
+                    position.X += width + (item?.MarginRight ?? 0f);
+                }
             }
             base.Render(origPosition, highlighted);
         }
@@ -580,11 +619,14 @@ public partial class TableMenu : TextMenu {
     }
     
     /// <inheritdoc cref="TableMenu"/>
-    public TableMenu() {
-        MenuDataContainer dataContainer = new();
+    public TableMenu() : base() {
+        MenuDataContainer dataContainer = this.EnsureDataContainer();
         dataContainer.MenuData.Add(new MultiDisplayData());
-        Items.Add(dataContainer);
     }
-    
+
     //TODO override Update and Render to allow both horizontal and vertical scroll (TextMenu methods only allow vertical)
+    public override void Render() {
+        AssignMeasures(); //TODO can probably make a system to check for dimension changes to avoid having to run this every single frame
+        base.Render();
+    }
 }

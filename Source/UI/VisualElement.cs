@@ -75,7 +75,7 @@ public abstract class VisualElement {
     /// The value this <see cref="VisualElement"/> displays a visual representation of.
     /// </summary>
     public object Value {
-        get {return _value = ValueHandler.ValueGetter?.Invoke() ?? _value;}
+        get {return _value = ValueHandler?.ValueGetter?.Invoke() ?? _value;}
         set {_value = value;}
     }
     /// <summary>
@@ -168,13 +168,26 @@ public class TextElement : VisualElement {
     public ValueHandling _valueHandler = new();
     public new ValueHandling ValueHandler { get => _valueHandler; set { _valueHandler = value; base.ValueHandler = value; } }
 
+    /// <summary>
+    /// Backing field for <see cref="Text"/>.
+    /// </summary>
     public string _text = "";
     /// <summary>
-    /// The text this <see cref="TextElement"/> displays, which is a text representation of <see cref="Value"/>. 
+    /// The text this <see cref="TextElement"/> displays. If this element uses a <see cref="ValueHandler"/>,
+    /// this property will raise its associated events -- getting will raise <see cref="ValueHandling.ValueToString"/>
+    /// and setting will raise <see cref="ValueHandling.SetValueFromString"/>.
     /// </summary>
     public string Text {
-        get => _text = _valueHandler.ValueToString?.Invoke() ?? _value?.ToString();
-        set { _text = value; _valueHandler.SetValueFromString?.Invoke(value);}
+        get {
+            var newText = _valueHandler?.ValueToString?.Invoke() ?? _value?.ToString() ?? _text;
+            NeedsRemeasured = newText != _text;
+            return _text = newText;
+        }
+        set {
+            NeedsRemeasured = _text != value;
+            _text = value;
+            _valueHandler?.SetValueFromString?.Invoke(value);
+        }
     }
 
     /// <summary>
@@ -185,29 +198,171 @@ public class TextElement : VisualElement {
     /// Color of the drop shadow around the text.
     /// </summary>
     public Color DropShadowColor = Color.DarkSlateBlue;
+
+    /// <summary>
+    /// Backing field for <see cref="Font"/>. 
+    /// </summary>
+    public PixelFontSize _font = ActiveFont.FontSize;
     /// <summary>
     /// Font of the text. Must be present in <see cref="Fonts.loadedFonts"/>. See
     /// <see href="https://github.com/EverestAPI/Resources/wiki/Adding-Custom-Dialogue#adding-a-completely-custom-font-for-the-game">this guide</see>
     /// to get Everest to load custom fonts.
     /// </summary>
-    public PixelFontSize Font = ActiveFont.FontSize;
+    public PixelFontSize Font {
+        get => _font;
+        set {
+            NeedsRemeasured = _font != value;
+            _font = value;
+        }
+    }
+
+    /// <summary>
+    /// Backing field for <see cref="MaxWidth"/>. 
+    /// </summary>
+    public float _maxWidth = float.MaxValue;
+    /// <summary>
+    /// Maximum width the text is allowed to occupy.
+    /// </summary>
+    public float MaxWidth {
+        get => _maxWidth;
+        set {
+            NeedsRemeasured = _maxWidth != value;
+            _maxWidth = value;
+        }
+    }
+    /// <summary>
+    /// Backing field for <see cref="MaxHeight"/>. 
+    /// </summary>
+    public float _maxHeight = float.MaxValue;
+    /// <summary>
+    /// Maximum height the text is allowed to occupy.
+    /// </summary>
+    public float MaxHeight {
+        get => _maxHeight;
+        set {
+            NeedsRemeasured = _maxHeight != value;
+            _maxHeight = value;
+        }
+    }
+    /// <summary>
+    /// Backing field for <see cref="MinScale"/>. 
+    /// </summary>
+    public float _minScale = 1f;
+    /// <summary>
+    /// Minimum factor by which <see cref="VisualElement.Scale"/> may be multiplied for oversize text. Must be between 0 and 1 to have any effect.
+    /// </summary>
+    public float MinScale {
+        get => _minScale;
+        set {
+            NeedsRemeasured = _minScale != value;
+            _minScale = value;
+        }
+    }
+    /// <summary>
+    /// Backing field for <see cref="OversizeTruncate"/>. 
+    /// </summary>
+    public string _oversizeTruncate = "...";
+    /// <summary>
+    /// Text that appears when truncated text is shown due to the full text being too long to fit.
+    /// </summary>
+    public string OversizeTruncate {
+        get => _oversizeTruncate;
+        set {
+            NeedsRemeasured = _oversizeTruncate != value;
+            _oversizeTruncate = value;
+        }
+    }
+
+    public class TextMeasurements {
+        public string Text = "";
+        public Vector2 Scale = Vector2.One;
+        public float IgnoreZoomFactor = 1f;
+        public float Width = 0f;
+        public float Height = 0f;
+    }
+    public bool NeedsRemeasured = true;
+    public TextMeasurements _measurements = new();
+    public TextMeasurements Measurements { get {
+        if (NeedsRemeasured) { Measure(); }
+        return _measurements;
+    } }
+    public void Measure() {
+        NeedsRemeasured = false;
+
+        _measurements.Text = Text;
+
+        //IgnoreZoom
+        _measurements.Scale.X = Scale.X;
+        _measurements.Scale.Y = Scale.Y;
+        _measurements.IgnoreZoomFactor = 1f;
+        if (IgnoreZoom && UIHelpers.SpriteBatches.TryGetValue(Draw.SpriteBatch, out var batchData) && batchData.TryGetValue(UIHelpers.SpriteBatchZoom, out object foundZoom) && foundZoom is float validZoom) {
+            _measurements.IgnoreZoomFactor /= validZoom;
+            _measurements.Scale *= _measurements.IgnoreZoomFactor;
+        }
+        
+        //MinScale, MaxWidth, MaxHeight
+        bool canShrink = MinScale > 0f && MinScale < 1f;
+        bool canWrap = MaxHeight >= Font.LineHeight * 2f;
+        if (canShrink && canWrap) {
+            
+        } else {
+            //adapted from Monocle.PixelFontSize.Measure(string)
+            int lineCount = 1;
+            if (canWrap) {
+
+            }
+            _measurements.Width = 0f;
+            float maxWidth = MaxWidth * (canShrink ? MinScale : 1f);
+            bool trunc = false;
+            Stack<float> charWidths = new();
+            for (int i = 0; i < _measurements.Text.Length; i++) {
+                if (_measurements.Text[i] == '\n') {
+                    _measurements.Text = _measurements.Text[..(i - 1)];
+                    trunc = true;
+                    break;
+                }
+                if (Font.Characters.TryGetValue(_measurements.Text[i], out var ch)) {
+                    var ogWidth = _measurements.Width;
+                    _measurements.Width += ch.XAdvance;
+                    if (i < _measurements.Text.Length - 1 && ch.Kerning.TryGetValue(_measurements.Text[i + 1], out var kerning)) {
+                        _measurements.Width += kerning;
+                    }
+                    if (_measurements.Width > maxWidth) {
+                        _measurements.Text = _measurements.Text[..(i - 1)];
+                        _measurements.Width = ogWidth;
+                        trunc = true;
+                        break;
+                    } else {
+                        charWidths.Push(_measurements.Width - ogWidth);
+                    }
+                }
+            }
+            if (trunc) {
+                float truncWidth = Font.Measure(OversizeTruncate).X;
+                while (_measurements.Width + truncWidth > maxWidth && charWidths.TryPop(out var charWidth)) {
+                    _measurements.Text = _measurements.Text[..^1];
+                    _measurements.Width -= charWidth;
+                }
+                _measurements.Text += OversizeTruncate;
+            }
+            if (canShrink) { _measurements.Scale *= MaxWidth / _measurements.Width; }
+            _measurements.Height = Font.LineHeight * lineCount;
+        }
+    }
 
     public override void Render() {
         var ogSpriteBatch = Draw.SpriteBatch;
         Draw.SpriteBatch = SpriteBatch;
-        Vector2 scale = new(Scale.X, Scale.Y);
-        float zoomInverseFactor = 1f;
-        if (IgnoreZoom && UIHelpers.SpriteBatches.TryGetValue(Draw.SpriteBatch, out var batchData) && batchData.TryGetValue(UIHelpers.SpriteBatchZoom, out object foundZoom) && foundZoom is float validZoom) {
-            zoomInverseFactor /= validZoom;
-            scale *= zoomInverseFactor;
-        }
+
+        var msrmts = Measurements;
         if (DropShadowOffset != null) {
-            Font.DrawEdgeOutline(Text, Position, Justify, scale, Color, (float)DropShadowOffset, DropShadowColor, (BorderThickness ?? 0) * (IgnoreZoom ? zoomInverseFactor : 1f), BorderColor);
+            Font.DrawEdgeOutline(msrmts.Text, Position, Justify, msrmts.Scale, Color, (float)DropShadowOffset, DropShadowColor, (BorderThickness ?? 0f) * msrmts.IgnoreZoomFactor, BorderColor);
         } else if (BorderThickness != null) {
-            Font.DrawOutline(Text, Position, Justify, scale, Color, (float)BorderThickness * (IgnoreZoom ? zoomInverseFactor : 1f), BorderColor);
+            Font.DrawOutline(msrmts.Text, Position, Justify, msrmts.Scale, Color, (float)BorderThickness * msrmts.IgnoreZoomFactor, BorderColor);
         } else {
-            Font.Draw(Text, Position, Justify, scale, Color);
+            Font.Draw(msrmts.Text, Position, Justify, msrmts.Scale, Color);
         }
+
         Draw.SpriteBatch = ogSpriteBatch;
     }
 }

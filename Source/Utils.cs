@@ -28,7 +28,7 @@ public static class Utils {
     }
     
     public static TValue EnsureGet<TValue>(this List<TValue> list, int index, Func<int, TValue> fallback = null) {
-        if (index <= 0) { throw new IndexOutOfRangeException($"Cannot use negative index to access a list item (received index ${index})"); }
+        if (index < 0) { throw new IndexOutOfRangeException($"Cannot use negative index to access a list item (received index {index})"); }
         if (index < list.Count) { return list[index]; }
         fallback ??= (_) => default;
         while (list.Count <= index) { list.Add(fallback(list.Count)); }
@@ -36,7 +36,7 @@ public static class Utils {
     }
     
     public static void EnsureSet<TValue>(this List<TValue> list, int index, TValue value, Func<int, TValue> fillempty = null) {
-        if (index <= 0) { throw new IndexOutOfRangeException($"Cannot use negative index to access a list item (received index ${index})"); }
+        if (index < 0) { throw new IndexOutOfRangeException($"Cannot use negative index to access a list item (received index {index})"); }
         if (index < list.Count) { list[index] = value; }
         fillempty ??= (_) => default;
         while (list.Count < index) { list.Add(fillempty(list.Count)); }

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Celeste.Mod.MacroRoutingTool.UI;
 
 namespace Celeste.Mod.MacroRoutingTool;
 
@@ -71,7 +72,7 @@ public class MRTSettings : EverestModuleSettings {
     /// <summary>
     /// Absolute path of the directory containing the YAML files that graphs and routes are imported from and exported to.
     /// </summary>
-    public string MRTDirectoryAbsolute => MRTDirectory.Replace("%CELESTE%", Monocle.Engine.AssemblyDirectory, System.StringComparison.OrdinalIgnoreCase);
+    public string MRTDirectoryAbsolute => MRTDirectory.Replace("%CELESTE%", Monocle.Engine.AssemblyDirectory, StringComparison.OrdinalIgnoreCase);
 
     public void CreateMRTDirectoryEntry(TextMenu menu, bool inGame) {
         UI.ListItem item = new(false, true) {
@@ -87,4 +88,30 @@ public class MRTSettings : EverestModuleSettings {
         menu.Add(item);
     }
   #endregion
+  
+    /// <summary>
+    /// Dummy property to cause Everest to invoke <see cref="CreateIOMenuEntry"/> to create the IO section of MRT's Mod Options menu. 
+    /// </summary>
+    public bool IOMenu { get; set; }
+    /// <summary>
+    /// Creates the IO section of MRT's Mod Options menu.
+    /// </summary>
+    /// <param name="menu">The full Mod Options menu.</param>
+    /// <param name="sceneIsLevel">Whether the Mod Options menu was opened from a level or from another scene (e.g. <see cref="OuiMainMenu"/>).</param>
+    public void CreateIOMenuEntry(TextMenu menu, bool sceneIsLevel) {
+        TableMenu table = new(){DisplayWidth = 1440f};
+        var tableItem = table.MakeSubmenuCollapsedIn(menu);
+        tableItem.CollapsedLabel.Text = "IO";
+
+        float leftPortion = 0.2f;
+        table.ColumnFormats.Add(new() { Justify = 0f, Measure = table.DisplayWidth * leftPortion });
+        table.ColumnFormats.Add(new() { Justify = 1f, Measure = table.DisplayWidth * (1f - leftPortion), MarginBefore = 20f });
+
+        var directoryRow = table.AddRow();
+        var directoryLabel = new TableMenu.Label();
+        directoryLabel.Element.Text = MRTDialog.PathSetting;
+        directoryRow.Add(directoryLabel);
+        
+        foreach (var rowFormat in table.RowFormats) { rowFormat.Justify = 0.5f; }
+    }
 }

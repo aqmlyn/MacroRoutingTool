@@ -101,7 +101,7 @@ public class MultiDisplayData {
     /// <param name="menu"><see cref="TextMenu"/> for which the position is being calculated.</param>
     public static float AddScrollOffset(float initial, TextMenu menu) {
         if (menu.TryGetData(out MultiDisplayData data)) {
-            return initial + data.ScrollOffset;
+            return initial;// + data.ScrollOffset; TODO ScrollOffset is currently inaccurate
         }
         return initial;
     }
@@ -115,7 +115,7 @@ public class MultiDisplayData {
     /// <param name="menu"><see cref="TextMenu"/> for which the position is being calculated.</param>
     public static int ItemInViewBottom(int initial, TextMenu menu) {
         if (menu.DataContains<MultiDisplayData>()) {
-            return (int)menu.Height;
+            return (int)menu.Position.Y + (int)menu.Height;
         }
         return initial;
     }
