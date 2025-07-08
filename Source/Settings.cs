@@ -101,7 +101,7 @@ public class MRTSettings : EverestModuleSettings {
     public void CreateIOMenuEntry(TextMenu menu, bool sceneIsLevel) {
         TableMenu table = new(){DisplayWidth = 1440f};
         var tableItem = table.MakeSubmenuCollapsedIn(menu);
-        tableItem.CollapsedLabel.Text = "IO";
+        tableItem.Label.Text = "IO";
 
         float leftPortion = 0.2f;
         table.ColumnFormats.Add(new() { Justify = 0f, Measure = table.DisplayWidth * leftPortion });

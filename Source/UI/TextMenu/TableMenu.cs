@@ -64,7 +64,7 @@ public partial class TableMenu : TextMenu {
         public void GainFocus() {
             if (Container != null) {
                 Container.Focused = false;
-                Container.RenderAsFocused = true;
+                Container.RenderAsFocused = !Menu.Items[0].Selectable && Menu.FirstPossibleSelection == 0;
             }
             Menu.Focused = true;
             Menu.RenderAsFocused = false;
@@ -103,20 +103,23 @@ public partial class TableMenu : TextMenu {
             Selectable = SelectableCheck();
             if (!Menu.Focused && Container.Current == this) {
                 GainFocus();
-            }
-            if (Menu.Focused) {
-                if (Input.MenuUp.Pressed && (!Selectable || Menu.Selection == Menu.FirstPossibleSelection) && Container != null && Container.FirstPossibleSelection < Container.Items.IndexOf(this)) {
-                    Input.MenuUp.ConsumePress();
-                    LoseFocus();
-                    Container.MoveSelection(-1);
-                }
-                if (Input.MenuDown.Pressed && (!Selectable || Menu.Selection == Menu.LastPossibleSelection) && Container != null && Container.LastPossibleSelection > Container.Items.IndexOf(this)) {
-                    Input.MenuDown.ConsumePress();
-                    LoseFocus();
-                    Container.MoveSelection(1);
-                }
+                //vanilla checking for up/down doesn't consume them if found
+                if (Input.MenuUp.Pressed) { Input.MenuUp.ConsumePress(); }
+                if (Input.MenuDown.Pressed) { Input.MenuDown.ConsumePress(); }
             }
             Menu.Update();
+            if (Menu.Focused) {
+                if (Input.MenuUp.Pressed && (Menu.Selection < 0 || Menu.Selection == Menu.FirstPossibleSelection) && Container != null && Container.FirstPossibleSelection < Container.Items.IndexOf(this)) {
+                    Input.MenuUp.ConsumePress();
+                    LoseFocus();
+                    Container.MoveSelection(-1, true);
+                }
+                if (Input.MenuDown.Pressed && (Menu.Selection < 0 || Menu.Selection == Menu.LastPossibleSelection) && Container != null && Container.LastPossibleSelection > Container.Items.IndexOf(this)) {
+                    Input.MenuDown.ConsumePress();
+                    LoseFocus();
+                    Container.MoveSelection(1, true);
+                }
+            }
         }
     }
 
@@ -130,22 +133,29 @@ public partial class TableMenu : TextMenu {
         /// <summary>
         /// The <see cref="TextElement"/> shown when this item is collapsed.
         /// </summary>
-        public TextElement CollapsedLabel = new(){Justify = new(0f, 0.5f), BorderThickness = 2f};
+        public TextElement Label = new(){Justify = new(0f, 0.5f), BorderThickness = 2f};
 
         /// <summary>
-        /// Whether to automatically set <see cref="CollapsedLabel"/>'s color based on whether
+        /// Whether to automatically set <see cref="Label"/>'s color based on whether
         /// this item is currently hovered.  
         /// </summary>
         public bool CollapsedAutoColor = true;
 
-        public override bool SelectableCheck() => Collapsed || base.SelectableCheck();
-        public override float LeftWidth() => Collapsed ? CollapsedLabel.Font.Measure(CollapsedLabel.Text).X : base.LeftWidth();
-        public override float Height() => Collapsed ? CollapsedLabel.Font.LineHeight : base.Height();
+        public TextureElement Arrow = new() { Justify = new(0f, 0.5f), BorderThickness = 2f, Texture = GFX.Gui["downarrow"] };
+
+        public float ArrowSpacing = 20f;
+
+        public override bool SelectableCheck() => true;
+        public override float LeftWidth() => Collapsed ? Label.Font.Measure(Label.Text).X : base.LeftWidth();
+        public override float Height() => Label.Measurements.Height + (Collapsed ? 0f : (Container?.ItemSpacing ?? 0f) + base.Height());
 
         public override void ConfirmPressed() {
             if (Collapsed) {
                 Collapsed = false;
-                GainFocus();
+                GainFocus(); //even if there is nothing to hover, the table needs focused so that it can consume the cancel input to close it
+                if (base.SelectableCheck()) {
+                    SelectWiggler.StopAndClear();
+                }
             } else {
                 base.ConfirmPressed();
             }
@@ -153,25 +163,33 @@ public partial class TableMenu : TextMenu {
 
         public override void Update() {
             Selectable = SelectableCheck();
-            if (Collapsed) {
-                CollapsedLabel.Update();
-            } else if (Menu.Focused && Input.MenuCancel.Pressed) {
-                Input.MenuCancel.ConsumePress();
-                LoseFocus();
-                Collapsed = true;
-                Update();
-            } else {
+            Label.Update();
+            Arrow.Update();
+            if (!Collapsed) {
+                if (Menu.Focused) {
+                    if (Input.MenuCancel.Pressed) {
+                        Input.MenuCancel.ConsumePress();
+                        LoseFocus();
+                        Collapsed = true;
+                        SelectWiggler.Start();
+                    }
+                }
                 base.Update();
             }
         }
 
         public override void Render(Vector2 position, bool highlighted) {
-            if (Collapsed) {
-                CollapsedLabel.Position = position;
-                if (CollapsedAutoColor) { CollapsedLabel.Color = highlighted ? Container.HighlightColor : Color.White; }
-                CollapsedLabel.Render();
-            } else {
-                base.Render(position, highlighted);
+            var origPosition = new Vector2(position.X, position.Y);
+            var labelMsrmts = Label.Measurements;
+            position.Y = position.Y - Height() / 2f + labelMsrmts.Height / 2f;
+            Label.Position.X = position.X;
+            Label.Position.Y = Arrow.Position.Y = position.Y;
+            Arrow.Position.X = position.X + labelMsrmts.Width + ArrowSpacing * labelMsrmts.Scale.X;
+            if (CollapsedAutoColor) { Label.Color = Arrow.Color = highlighted ? Container.HighlightColor : Color.White; }
+            Label.Render();
+            Arrow.Render();
+            if (!Collapsed) {
+                base.Render(new(origPosition.X, origPosition.Y + labelMsrmts.Height / 2f), highlighted);
             }
         }
     }
