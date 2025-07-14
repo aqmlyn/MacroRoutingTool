@@ -67,7 +67,7 @@ public class MRTSettings : EverestModuleSettings {
     /// <summary>
     /// User-facing text representing the directory containing the YAML files that graphs and routes are imported from and exported to.
     /// </summary>
-    public string MRTDirectory {get; set;} = System.IO.Path.Combine("%CELESTE%", "MacroRoutingTool");
+    public string MRTDirectory {get; set;} = System.IO.Path.Combine("%CELESTE%", "MacroroutingTool");
 
     /// <summary>
     /// Absolute path of the directory containing the YAML files that graphs and routes are imported from and exported to.
@@ -101,9 +101,9 @@ public class MRTSettings : EverestModuleSettings {
     public void CreateIOMenuEntry(TextMenu menu, bool sceneIsLevel) {
         TableMenu table = new(){DisplayWidth = 1440f};
         var tableItem = table.MakeSubmenuCollapsedIn(menu);
-        tableItem.Label.Text = "IO";
+        tableItem.CollapserLabel.Text = "IO";
 
-        float leftPortion = 0.2f;
+        float leftPortion = 0.3f;
         table.ColumnFormats.Add(new() { Justify = 0f, Measure = table.DisplayWidth * leftPortion });
         table.ColumnFormats.Add(new() { Justify = 1f, Measure = table.DisplayWidth * (1f - leftPortion), MarginBefore = 20f });
 
@@ -111,6 +111,12 @@ public class MRTSettings : EverestModuleSettings {
         var directoryLabel = new TableMenu.Label();
         directoryLabel.Element.Text = MRTDialog.PathSetting;
         directoryRow.Add(directoryLabel);
+
+        var testButtonRow = table.AddRow();
+        var testButton = new TableMenu.Button();
+        testButton.Element.Text = "bnuuy";
+        testButton.OnPressed = () => Monocle.Engine.Commands.Log("bnuuy");
+        testButtonRow.Add(testButton);
         
         foreach (var rowFormat in table.RowFormats) { rowFormat.Justify = 0.5f; }
     }

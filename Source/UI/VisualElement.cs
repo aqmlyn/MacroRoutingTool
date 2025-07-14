@@ -114,7 +114,7 @@ public abstract class VisualElement {
     public bool IgnoreZoom = false;
     
     /// <summary>
-    /// Keep the value this text is based on updated.
+    /// Keep the value this graphic is based on updated.
     /// </summary>
     public virtual void Update() {
         //just need to call Value's getter to keep it up to date
@@ -180,11 +180,11 @@ public class TextElement : VisualElement {
     public string Text {
         get {
             var newText = _valueHandler?.ValueToString?.Invoke() ?? _value?.ToString() ?? _text;
-            NeedsRemeasured = newText != _text;
+            NeedsRemeasured |= newText != _text;
             return _text = newText;
         }
         set {
-            NeedsRemeasured = _text != value;
+            NeedsRemeasured |= _text != value;
             _text = value;
             _valueHandler?.SetValueFromString?.Invoke(value);
         }
@@ -211,7 +211,7 @@ public class TextElement : VisualElement {
     public PixelFontSize Font {
         get => _font;
         set {
-            NeedsRemeasured = _font != value;
+            NeedsRemeasured |= _font != value;
             _font = value;
         }
     }
@@ -226,7 +226,7 @@ public class TextElement : VisualElement {
     public float MaxWidth {
         get => _maxWidth;
         set {
-            NeedsRemeasured = _maxWidth != value;
+            NeedsRemeasured |= _maxWidth != value;
             _maxWidth = value;
         }
     }
@@ -240,7 +240,7 @@ public class TextElement : VisualElement {
     public float MaxHeight {
         get => _maxHeight;
         set {
-            NeedsRemeasured = _maxHeight != value;
+            NeedsRemeasured |= _maxHeight != value;
             _maxHeight = value;
         }
     }
@@ -254,7 +254,7 @@ public class TextElement : VisualElement {
     public float MinScale {
         get => _minScale;
         set {
-            NeedsRemeasured = _minScale != value;
+            NeedsRemeasured |= _minScale != value;
             _minScale = value;
         }
     }
@@ -268,21 +268,57 @@ public class TextElement : VisualElement {
     public string OversizeTruncate {
         get => _oversizeTruncate;
         set {
-            NeedsRemeasured = _oversizeTruncate != value;
+            NeedsRemeasured |= _oversizeTruncate != value;
             _oversizeTruncate = value;
         }
     }
 
-    public class TextMeasurements {
+    /// <summary>
+    /// Actual values that will be used to render as much of a <see cref="TextElement"/>'s text as possible
+    /// in the space provided by the element's <see cref="MaxWidth"/>, <see cref="MaxHeight"/>, and <see cref="MinScale"/>. 
+    /// </summary>
+    public class Measurement {
+        /// <summary>
+        /// The text that will be rendered. Newlines might have been inserted into the original text to fit as much of it as
+        /// possible in the space provided. 
+        /// </summary>
         public string Text = "";
+        /// <summary>
+        /// The scale at which the text will be rendered. Each axis of the original <see cref="VisualElement.Scale"/> might have
+        /// been multiplied by a value to fit as much of the original text as possible in the space provided.
+        /// </summary>
         public Vector2 Scale = Vector2.One;
-        public float IgnoreZoomFactor = 1f;
+        /// <summary>
+        /// This object's <see cref="Scale"/> is the original <see cref="VisualElement.Scale"/> multiplied by this factor.
+        /// </summary>
+        /// <remarks>
+        /// The measurement <see cref="Scale"/> field is just for convenience and very minor optimization. This is the important field --
+        /// some things other than the main graphic also need scaled to be rendered accordingly, e.g. <see cref="VisualElement.BorderThickness"/>
+        /// and <see cref="DropShadowOffset"/>, and that's done by passing this factor to the corresponding arguments of
+        /// <see cref="PixelFontSize.DrawEdgeOutline"/>.
+        /// </remarks>
+        public float ScaleFactor = 1f;
+        /// <summary>
+        /// The width that is actually needed to render the text in the space provided.
+        /// </summary>
         public float Width = 0f;
+        /// <summary>
+        /// The height that is actually needed to render the text in the space provided.
+        /// </summary>
         public float Height = 0f;
     }
+    /// <summary>
+    /// Indicates to the <see cref="Measurements"/> getter whether <see cref="Measure"/> needs to be called before returning.
+    /// </summary>
     public bool NeedsRemeasured = true;
-    public TextMeasurements _measurements = new();
-    public TextMeasurements Measurements { get {
+    /// <summary>
+    /// Backing field for <see cref="Measurements"/>.
+    /// </summary>
+    public Measurement _measurements = new();
+    /// <summary>
+    /// Actual values that will be used to render this <see cref="TextElement"/>. 
+    /// </summary>
+    public Measurement Measurements { get {
         if (NeedsRemeasured) { Measure(); }
         return _measurements;
     } }
@@ -294,10 +330,10 @@ public class TextElement : VisualElement {
         //IgnoreZoom
         _measurements.Scale.X = Scale.X;
         _measurements.Scale.Y = Scale.Y;
-        _measurements.IgnoreZoomFactor = 1f;
+        _measurements.ScaleFactor = 1f;
         if (IgnoreZoom && UIHelpers.SpriteBatches.TryGetValue(Draw.SpriteBatch, out var batchData) && batchData.TryGetValue(UIHelpers.SpriteBatchZoom, out object foundZoom) && foundZoom is float validZoom) {
-            _measurements.IgnoreZoomFactor /= validZoom;
-            _measurements.Scale *= _measurements.IgnoreZoomFactor;
+            _measurements.ScaleFactor /= validZoom;
+            _measurements.Scale *= _measurements.ScaleFactor;
         }
         
         //MinScale, MaxWidth, MaxHeight
@@ -313,12 +349,12 @@ public class TextElement : VisualElement {
             }
             _measurements.Width = 0f;
             float maxWidth = MaxWidth * (canShrink ? MinScale : 1f);
-            bool trunc = false;
+            bool needsTruncated = false;
             Stack<float> charWidths = new();
             for (int i = 0; i < _measurements.Text.Length; i++) {
                 if (_measurements.Text[i] == '\n') {
                     _measurements.Text = _measurements.Text[..(i - 1)];
-                    trunc = true;
+                    needsTruncated = true;
                     break;
                 }
                 if (Font.Characters.TryGetValue(_measurements.Text[i], out var ch)) {
@@ -330,14 +366,14 @@ public class TextElement : VisualElement {
                     if (_measurements.Width > maxWidth) {
                         _measurements.Text = _measurements.Text[..(i - 1)];
                         _measurements.Width = ogWidth;
-                        trunc = true;
+                        needsTruncated = true;
                         break;
                     } else {
                         charWidths.Push(_measurements.Width - ogWidth);
                     }
                 }
             }
-            if (trunc) {
+            if (needsTruncated) {
                 float truncWidth = Font.Measure(OversizeTruncate).X;
                 while (_measurements.Width + truncWidth > maxWidth && charWidths.TryPop(out var charWidth)) {
                     _measurements.Text = _measurements.Text[..^1];
@@ -345,7 +381,11 @@ public class TextElement : VisualElement {
                 }
                 _measurements.Text += OversizeTruncate;
             }
-            if (canShrink) { _measurements.Scale *= MaxWidth / _measurements.Width; }
+            if (canShrink) {
+                var spaceFactor = MaxWidth / _measurements.Width;
+                _measurements.ScaleFactor *= spaceFactor;
+                _measurements.Scale *= spaceFactor;
+            }
             _measurements.Height = Font.LineHeight * lineCount;
         }
     }
@@ -356,9 +396,9 @@ public class TextElement : VisualElement {
 
         var msrmts = Measurements;
         if (DropShadowOffset != null) {
-            Font.DrawEdgeOutline(msrmts.Text, Position, Justify, msrmts.Scale, Color, (float)DropShadowOffset, DropShadowColor, (BorderThickness ?? 0f) * msrmts.IgnoreZoomFactor, BorderColor);
+            Font.DrawEdgeOutline(msrmts.Text, Position, Justify, msrmts.Scale, Color, (float)DropShadowOffset, DropShadowColor, (BorderThickness ?? 0f) * msrmts.ScaleFactor, BorderColor);
         } else if (BorderThickness != null) {
-            Font.DrawOutline(msrmts.Text, Position, Justify, msrmts.Scale, Color, (float)BorderThickness * msrmts.IgnoreZoomFactor, BorderColor);
+            Font.DrawOutline(msrmts.Text, Position, Justify, msrmts.Scale, Color, (float)BorderThickness * msrmts.ScaleFactor, BorderColor);
         } else {
             Font.Draw(msrmts.Text, Position, Justify, msrmts.Scale, Color);
         }
@@ -510,7 +550,9 @@ public class UITextElement : TextElement {
     };
 
     public override void Render() {
-        Color = ColorsByState.EnsureGet(State, ColorsByState[States.Idle]);
+        if (!ColorsByState.TryGetValue(State, out Color) && !ColorsByState.TryGetValue(States.Idle, out Color)) {
+            Color = Color.White;
+        }
         base.Render();
     }
 }
