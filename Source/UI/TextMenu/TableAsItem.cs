@@ -14,6 +14,9 @@ public partial class TableMenu {
         /// </summary>
         public TableMenu Menu;
 
+        public Action OnNavigateUpFromTop;
+        public Action OnNavigateDownFromBottom;
+
         /// <inheritdoc cref="AsItem"/> 
         public AsItem() {
             IncludeWidthInMeasurement = false;
@@ -55,6 +58,70 @@ public partial class TableMenu {
         /// </summary>
         public virtual bool SelectableCheck() => Menu.Items[0].Selectable || Menu.FirstPossibleSelection != 0;
 
+        public override void Added() {
+            if (Menu != null) {
+                Menu.DefaultNavigateUpFromTop = () => {
+                    OnNavigateUpFromTop?.Invoke();
+                    if (Input.MenuUp.Pressed) {
+                        //if there is another item in Container to navigate to, including by wrapping to the opposite side, then navigate to it
+                        bool shouldNavigate = false;
+                        if (Container != null) {
+                            shouldNavigate = true;
+                            for (int i = Container.Items.Count - 1; i >= 0; i--) {
+                                var item = Container.Items[i];
+                                if (shouldNavigate) {
+                                    if (item.Hoverable) {
+                                        if (item == this) { shouldNavigate = false; }
+                                        else { break; }
+                                    }
+                                } else {
+                                    if (item.Hoverable) {
+                                        shouldNavigate = true;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                        if (shouldNavigate) {
+                            Input.MenuUp.ConsumePress();
+                            LoseFocus();
+                            Container.MoveSelection(-1, true);
+                        }
+                    }
+                };
+                Menu.DefaultNavigateDownFromBottom = () => {
+                    OnNavigateDownFromBottom?.Invoke();
+                    if (Input.MenuDown.Pressed) {
+                        //if there is another item in Container to navigate to, including by wrapping to the opposite side, then navigate to it
+                        bool shouldNavigate = false;
+                        if (Container != null) {
+                            shouldNavigate = true;
+                            for (int i = 0; i < Container.Items.Count; i++) {
+                                var item = Container.Items[i];
+                                if (shouldNavigate) {
+                                    if (item.Hoverable) {
+                                        if (item == this) { shouldNavigate = false; }
+                                        else { break; }
+                                    }
+                                } else {
+                                    if (item.Hoverable) {
+                                        shouldNavigate = true;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                        if (shouldNavigate) {
+                            Input.MenuDown.ConsumePress();
+                            LoseFocus();
+                            Container.MoveSelection(1, true);
+                        }
+                    }
+                };
+            }
+            base.Added();
+        }
+
         public override float LeftWidth() => Menu.AllowShrinkWidth ? Math.Min(Menu.FullWidth, Menu.DisplayWidth) : Menu.DisplayWidth;
         public override float Height() => Menu.AllowShrinkHeight ? Math.Min(Menu.FullHeight, Menu.DisplayHeight) : Menu.DisplayHeight;
         public override void Render(Vector2 position, bool highlighted) {
@@ -68,25 +135,13 @@ public partial class TableMenu {
         public override void Update() {
             if (Menu != null) {
                 Selectable = SelectableCheck();
-                if (Menu.Active && !Menu.Focused && Container.Current == this) {
+                if (Menu.Active && !Menu.Focused && Container?.Current == this) {
                     GainFocus();
                     //vanilla checking for up/down doesn't consume them if found
                     if (Input.MenuUp.Pressed) { Input.MenuUp.ConsumePress(); }
                     if (Input.MenuDown.Pressed) { Input.MenuDown.ConsumePress(); }
                 }
                 Menu.Update();
-                if (Menu.Focused) {
-                    if (Input.MenuUp.Pressed && (Menu.Selection < 0 || Menu.Selection == Menu.FirstPossibleSelection) && Container != null && Container.FirstPossibleSelection < Container.Items.IndexOf(this)) {
-                        Input.MenuUp.ConsumePress();
-                        LoseFocus();
-                        Container.MoveSelection(-1, true);
-                    }
-                    if (Input.MenuDown.Pressed && (Menu.Selection < 0 || Menu.Selection == Menu.LastPossibleSelection) && Container != null && Container.LastPossibleSelection > Container.Items.IndexOf(this)) {
-                        Input.MenuDown.ConsumePress();
-                        LoseFocus();
-                        Container.MoveSelection(1, true);
-                    }
-                }
             }
         }
     }

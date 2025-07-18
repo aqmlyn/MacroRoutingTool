@@ -18,6 +18,8 @@ public partial class TableMenu {
         /// </summary>
         public bool UseDefaultColors = true;
 
+        public GetterEventProperty<string> State = new(){Value = UITextElement.States.Idle};
+
         public override float UnrestrictedWidth() => Element?.Measurements.Width ?? base.UnrestrictedWidth();
         public override float UnrestrictedHeight() => Element?.Measurements.Height ?? base.UnrestrictedHeight();
         
@@ -30,8 +32,9 @@ public partial class TableMenu {
             if (Element != null) {
                 if (UseDefaultColors) {
                     Element.ColorsByState[UITextElement.States.Hovered] = Container?.HighlightColor ?? Element.ColorsByState[UITextElement.States.Hovered];
-                    Element.State = highlighted ? UITextElement.States.Hovered : UITextElement.States.Idle;
+                    State.Value = highlighted ? UITextElement.States.Hovered : UITextElement.States.Idle;
                 }
+                Element.State = State.Value;
                 Element.Position = position;
                 Element.Justify.X = JustifyX ?? Element.Justify.X;
                 Element.Justify.Y = JustifyY ?? Element.Justify.Y;
