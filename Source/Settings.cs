@@ -99,7 +99,7 @@ public class MRTSettings : EverestModuleSettings {
     /// <param name="menu">The full Mod Options menu.</param>
     /// <param name="sceneIsLevel">Whether the Mod Options menu was opened from a level or from another scene (e.g. <see cref="OuiMainMenu"/>).</param>
     public void CreateIOMenuEntry(TextMenu menu, bool sceneIsLevel) {
-        TableMenu table = new(){DisplayWidth = 1440f};
+        TableMenu table = new(){DisplayWidth = 1440f, UseNavigationCursor = false};
         var tableItem = table.MakeSubmenuCollapsedIn(menu);
         tableItem.CollapserLabel.Text = "IO";
 

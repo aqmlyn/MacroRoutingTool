@@ -3,7 +3,7 @@ using Microsoft.Xna.Framework;
 
 namespace Celeste.Mod.MacroRoutingTool.UI;
 
-public partial class TableMenu {
+partial class TableMenu {
     /// <summary>
     /// Representation of a <see cref="TableMenu"/> as an item in another <see cref="TextMenu"/> 
     /// (which may or may not itself be a <see cref="TableMenu"/>). 
@@ -57,6 +57,11 @@ public partial class TableMenu {
         /// Determines whether this item can be hovered.
         /// </summary>
         public virtual bool SelectableCheck() => Menu.Items[0].Selectable || Menu.FirstPossibleSelection != 0;
+
+        /// <summary>
+        /// Called each frame while this item is hovered to determine whether its <see cref="Menu"/> is to gain control.
+        /// </summary>
+        public virtual bool EnterCheck() => true;
 
         public override void Added() {
             if (Menu != null) {
@@ -135,7 +140,7 @@ public partial class TableMenu {
         public override void Update() {
             if (Menu != null) {
                 Selectable = SelectableCheck();
-                if (Menu.Active && !Menu.Focused && Container?.Current == this) {
+                if (!Menu.Focused && Container?.Current == this && EnterCheck()) {
                     GainFocus();
                     //vanilla checking for up/down doesn't consume them if found
                     if (Input.MenuUp.Pressed) { Input.MenuUp.ConsumePress(); }
@@ -175,20 +180,16 @@ public partial class TableMenu {
         public float CollapserArrowSpacing = 20f;
 
         public override bool SelectableCheck() => true;
-        public override float LeftWidth() => Collapsed ? CollapserLabel.Font.Measure(CollapserLabel.Text).X : base.LeftWidth();
+        public override bool EnterCheck() => !Collapsed;
+        public override float LeftWidth() => Math.Max(CollapserLabel.Measurements.Width + CollapserArrowSpacing + (CollapserArrow.Texture.Width * CollapserArrow.Scale.X), Collapsed ? 0f : base.LeftWidth());
         public override float Height() => CollapserLabel.Measurements.Height + (Collapsed ? 0f : ((Container?.ItemSpacing ?? 0f) + base.Height()));
-
-        public override void Added() {
-            if (Menu != null) { Menu.Active = false; }
-            base.Added();
-        }
 
         public override void ConfirmPressed() {
             if (Menu != null) {
                 if (Collapsed) {
                     Input.MenuConfirm.ConsumePress();
                     Collapsed = false;
-                    Menu.Visible = Menu.Active = true;
+                    Menu.Visible = true;
                     GainFocus(); //even if there is nothing to hover, the table needs focused so that it can consume the cancel input to close it
                 }
             }
@@ -204,7 +205,7 @@ public partial class TableMenu {
                 if (Menu.Focused && Input.MenuCancel.Pressed) {
                     Input.MenuCancel.ConsumePress();
                     LoseFocus();
-                    Menu.Visible = Menu.Active = false;
+                    Menu.Visible = false;
                     Collapsed = true;
                     SelectWiggler.Start();
                     return;
