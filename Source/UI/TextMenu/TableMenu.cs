@@ -47,105 +47,14 @@ public partial class TableMenu : TextMenu {
             }
         }
 
-        /// <summary>
-        /// The minimum allowed width for this item as specified in the containing <see cref="TableMenu"/>'s
-        /// <see cref="ColumnFormats"/>, accounting for items that span multiple columns.
-        /// </summary>
-        public float MinWidth() {
-            if (Container is TableMenu table) {
-                return table.ColumnFormats[Column].MinMeasure ?? 0f;
-            }
-            return 0f;
-        }
-        
-        /// <summary>
-        /// The minimum allowed height for this item as specified in the containing <see cref="TableMenu"/>'s
-        /// <see cref="RowFormats"/>, accounting for items that span multiple rows.
-        /// </summary>
-        public float MinHeight() {
-            if (Container is TableMenu table) {
-                return table.RowFormats[Row].MinMeasure ?? 0f;
-            }
-            return 0f;
-        }
-
-        /// <summary>
-        /// The maximum allowed width for this item as specified in the containing <see cref="TableMenu"/>'s
-        /// <see cref="ColumnFormats"/>, accounting for items that span multiple columns.
-        /// </summary>
-        public float MaxWidth() {
-            if (Container is TableMenu table) {
-                return table.ColumnFormats[Column].MaxMeasure ?? float.PositiveInfinity;
-            }
-            return float.PositiveInfinity;
-        }
-
-        /// <summary>
-        /// The maximum allowed height for this item as specified in the containing <see cref="TableMenu"/>'s
-        /// <see cref="RowFormats"/>, accounting for items that span multiple rows.
-        /// </summary>
-        public float MaxHeight() {
-            if (Container is TableMenu table) {
-                return table.RowFormats[Row].MaxMeasure ?? float.PositiveInfinity;
-            }
-            return float.PositiveInfinity;
-        }
-
-        /// <summary>
-        /// Width this item would have if there were no minimum or maximum width constraints.
-        /// </summary>
-        public virtual float UnrestrictedWidth() => 0f;
-        /// <summary>
-        /// Height this item would have if there were no minimum or maximum height constraints.
-        /// </summary>
-        public virtual float UnrestrictedHeight() => 0f;
-
-        /// <summary>
-        /// The scale that would be required to maintain this item's aspect ratio while fitting it in its restrictions
-        /// (<see cref="MinWidth"/>, <see cref="MaxWidth"/>, <see cref="MinHeight"/>, and <see cref="MaxHeight"/>). 
-        /// </summary>
-        public float FitScale => Math.Min(1f, Math.Min(MaxWidth() / Math.Max(MinWidth(), UnrestrictedWidth()), MaxHeight() / Math.Max(MinHeight(), UnrestrictedHeight())));
-
-        public override float LeftWidth() {
-            if (Container != null && Container is TableMenu table) {
-                return table.ColumnFormats[Column].Measure;
-            }
-            return base.LeftWidth();
-        }
-
-        public override float Height() {
-            if (Container != null && Container is TableMenu table) {
-                return table.RowFormats[Row].Measure;
-            }
-            return base.Height();
-        }
-
         public override void LeftPressed() {
             OnLeftPressed?.Invoke();
-            if (Input.MenuLeft.Pressed) { OnNavigateLeft?.Invoke(); }
-            if (Input.MenuLeft.Pressed) {
-                if (Container != null && Container is TableMenu table) {
-                    table.DefaultNavigateLeftFromLeft?.Invoke();
-                    if (!Input.MenuLeft.Pressed) { goto Base; }
-                }
-                DefaultNavigateLeftFromLeft();
-            }
-            Base:
-            base.LeftPressed();
+            if (Input.MenuLeft.Pressed) { base.LeftPressed(); }
         }
 
         public override void RightPressed() {
             OnRightPressed?.Invoke();
-            if (Input.MenuRight.Pressed) { OnNavigateRight?.Invoke(); }
-            if (Input.MenuRight.Pressed) {
-                if (Container != null && Container is TableMenu table) {
-                    table.DefaultNavigateRightFromRight?.Invoke();
-                    if (!Input.MenuRight.Pressed) { goto Base; }
-                }
-                DefaultNavigateRightFromRight();
-            }
-            Base:
-            base.RightPressed();
+            if (Input.MenuRight.Pressed) { base.RightPressed(); }
         }
         
         /// <inheritdoc cref="UI.XMLDoc"/> 

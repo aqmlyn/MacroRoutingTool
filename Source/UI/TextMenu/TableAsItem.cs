@@ -61,7 +61,7 @@ partial class TableMenu {
         /// <summary>
         /// Called each frame while this item is hovered to determine whether its <see cref="Menu"/> is to gain control.
         /// </summary>
-        public virtual bool EnterCheck() => true;
+        public virtual bool EnterCheck() => Selectable || Menu.UseNavigationCursor;
 
         public override void Added() {
             if (Menu != null) {
@@ -132,7 +132,7 @@ partial class TableMenu {
         public override void Render(Vector2 position, bool highlighted) {
             if (Menu != null) {
                 Menu.Position.X = position.X + Menu.Width * Menu.Justify.X;
-                Menu.Position.Y = position.Y + Menu.Height * (Menu.Justify.Y - 0.5f);
+                Menu.Position.Y = position.Y - SelectWiggler.Value * 8f + Menu.Height * (Menu.Justify.Y - 0.5f);
                 Menu.Render();
             }
         }
@@ -156,12 +156,17 @@ partial class TableMenu {
         /// <summary>
         /// Whether this item is currently collapsed.
         /// </summary>
-        public bool Collapsed;
+        public bool Collapsed = true;
+
+        /// <summary>
+        /// Whether the label is currently hovered, rather than the table itself.
+        /// </summary>
+        public bool HoveringLabel = false;
 
         /// <summary>
         /// The <see cref="TextElement"/> shown above the table.
         /// </summary>
-        public TextElement CollapserLabel = new(){Justify = new(0f, 0.5f), BorderThickness = 2f};
+        public TextElement CollapserLabel = new() { Justify = new(0f, 0.5f), BorderThickness = 2f };
 
         /// <summary>
         /// Whether to automatically set <see cref="CollapserLabel"/>'s color based on whether
@@ -179,8 +184,35 @@ partial class TableMenu {
         /// </summary>
         public float CollapserArrowSpacing = 20f;
 
+        public override void Added() {
+            base.Added();
+            OnNavigateUpFromTop = () => {
+                Input.MenuUp.ConsumePress();
+                LoseFocus();
+                HoveringLabel = true;
+                SelectWiggler.Start();
+            };
+            OnEnter = () => {
+                Input.MenuUp.ConsumePress();
+                Input.MenuDown.ConsumePress();
+            };
+            //OnUpdate is the first thing in Update, so it runs before vanilla input checks, giving us a chance to consume the inputs
+            Container.OnUpdate = () => {
+                if (Container.Focused && Container.Current == this && Menu != null) {
+                    if (Input.MenuDown.Pressed) {
+                        //when the label is hovered and down is pressed, navigate into the table
+                        Input.MenuDown.ConsumePress();
+                        HoveringLabel = false;
+                        GainFocus();
+                    }
+                    //i also wanted pressing cancel while hovering the label to collapse the menu, but turns out
+                    //that would require hooking OuiModOptions.Update .. ehh i could but i'd rather not
+                }
+            };
+        }
+
         public override bool SelectableCheck() => true;
-        public override bool EnterCheck() => !Collapsed;
+        public override bool EnterCheck() => !Collapsed && !HoveringLabel;
         public override float LeftWidth() => Math.Max(CollapserLabel.Measurements.Width + CollapserArrowSpacing + (CollapserArrow.Texture.Width * CollapserArrow.Scale.X), Collapsed ? 0f : base.LeftWidth());
         public override float Height() => CollapserLabel.Measurements.Height + (Collapsed ? 0f : ((Container?.ItemSpacing ?? 0f) + base.Height()));
 
@@ -191,6 +223,11 @@ partial class TableMenu {
                     Collapsed = false;
                     Menu.Visible = true;
                     GainFocus(); //even if there is nothing to hover, the table needs focused so that it can consume the cancel input to close it
+                } else if (!Menu.Focused) {
+                    Input.MenuConfirm.ConsumePress();
+                    Collapsed = true;
+                    Menu.Visible = false;
+                    LoseFocus();
                 }
             }
             base.ConfirmPressed();
@@ -201,8 +238,14 @@ partial class TableMenu {
             Selectable = SelectableCheck();
             CollapserLabel.Update();
             CollapserArrow.Update();
-            if (Menu != null && !Collapsed) {
-                if (Menu.Focused && Input.MenuCancel.Pressed) {
+            if (Container != null) {
+                if (Container.Current != this) {
+                    //hover the label when coming from the top, but not the bottom
+                    HoveringLabel = Container.Selection < Container.IndexOf(this);
+                }
+                if (!Collapsed && Menu != null && Menu.Focused && Input.MenuCancel.Pressed) {
+                    //when the table is hovered and cancel is pressed, collapse the item
+                    //(base.Update is called earlier so table items have a chance to consume the cancel press)
                     Input.MenuCancel.ConsumePress();
                     LoseFocus();
                     Menu.Visible = false;
@@ -234,6 +277,7 @@ partial class TableMenu {
     /// (which may or may not itself be a <see cref="TableMenu"/>), and return it.  
     /// </summary>
     public AsItem MakeSubmenuIn(TextMenu menu) {
+        ArgumentNullException.ThrowIfNull(menu);
         Focused = false;
         AsItem asItem = new(){Menu = this, Container = menu};
         menu.Add(asItem);
@@ -245,6 +289,7 @@ partial class TableMenu {
     /// (which may or may not itself be a <see cref="TableMenu"/>), and return it.  
     /// </summary>
     public AsCollapsibleItem MakeSubmenuCollapsedIn(TextMenu menu) {
+        ArgumentNullException.ThrowIfNull(menu);
         Focused = false;
         AsCollapsibleItem asItem = new() { Menu = this, Container = menu, Collapsed = true };
         menu.Add(asItem);
