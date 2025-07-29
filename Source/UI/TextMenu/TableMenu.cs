@@ -186,11 +186,13 @@ public partial class TableMenu : TextMenu {
                         var top = position.Y + (item.MarginTop ?? 0f);
                         if (top > Engine.Height || top - tableTopLeft.Y > table.Height) { continue; } //if item is below display area only due to top margin, cull item
                         position.X += item.MarginLeft ?? 0f;
+                        width -= (item.MarginLeft ?? 0f) + (item.MarginRight ?? 0f);
                         if (position.X > Engine.Width || position.X - tableTopLeft.X > table.Width) { return; } //if item is right of display area, cull rest of row
                         if (position.X + width < 0f || position.X + width < tableTopLeft.X) { continue; } //if item is left of display area, cull item
-                        item.Render(new(position.X + width * (item.JustifyX ?? 0.5f), top + height * (item.JustifyY ?? 0.5f)), hovered && HoverIndex == column);
+                        item.Render(new(position.X + width * (item.JustifyX ?? 0.5f), top + (item.SelectWiggler?.Value ?? 0f) * 8f + (height - (item.MarginTop ?? 0f) - (item.MarginBottom ?? 0f)) * (item.JustifyY ?? 0.5f)), hovered && HoverIndex == column);
+                        position.X += item.MarginRight ?? 0f;
                     }
-                    position.X += width + (item?.MarginRight ?? 0f);
+                    position.X += width;
                 }
             }
             base.Render(origPosition, hovered);

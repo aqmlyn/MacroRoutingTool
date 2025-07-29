@@ -66,6 +66,18 @@ partial class TableMenu {
     public Action DefaultNavigateRightFromRight;
     
     /// <summary>
+    /// Generate an action that will move this table's hover to the given cell when invoked.
+    /// </summary>
+    /// <param name="cell">The cell to hover.</param>
+    public Action HoverCell(CellItem cell) => () => {
+        var row = Rows[cell.Row];
+        Selection = Items.IndexOf(row);
+        row.HoverIndex = cell.Column;
+        Audio.Play("event:/ui/main/rollover_down");
+        cell.SelectWiggler.Start();  
+    };
+    
+    /// <summary>
     /// Throw an exception if the cursor is out of bounds.
     /// </summary>
     /// <exception cref="Exception">The table is empty.</exception>

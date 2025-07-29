@@ -232,14 +232,14 @@ partial class TableMenu {
         /// <summary>
         /// Backing field for <see cref="MarginLeft"/>. 
         /// </summary>
-        public float? _marginLeft = 0f;
+        public float? _marginLeft = null;
         /// <summary>
         /// Margin to add to this cell's left side.
         /// </summary>
         public float? MarginLeft {
             get {
                 if (Container is TableMenu table && table.ColumnFormats.Count > Column) {
-                    return Math.Min(_marginLeft ?? 0f, table.ColumnFormats[Column].MarginBefore ?? _marginLeft ?? 0f);
+                    return _marginLeft ?? table.ColumnFormats[Column].MarginBefore ?? 0f;
                 }
                 return _marginLeft;
             }
@@ -248,14 +248,14 @@ partial class TableMenu {
         /// <summary>
         /// Backing field for <see cref="MarginRight"/>. 
         /// </summary>
-        public float? _marginRight = 0f;
+        public float? _marginRight = null;
         /// <summary>
         /// Margin to add to this cell's right side.
         /// </summary>
         public float? MarginRight {
             get {
                 if (Container is TableMenu table && table.ColumnFormats.Count > Column) {
-                    return Math.Min(_marginRight ?? 0f, table.ColumnFormats[Column].MarginAfter ?? _marginRight ?? 0f);
+                    return _marginRight ?? table.ColumnFormats[Column].MarginAfter ?? 0f;
                 }
                 return _marginRight;
             }
@@ -264,14 +264,14 @@ partial class TableMenu {
         /// <summary>
         /// Backing field for <see cref="MarginTop"/>. 
         /// </summary>
-        public float? _marginTop = 0f;
+        public float? _marginTop = null;
         /// <summary>
         /// Margin to add to this cell's top side.
         /// </summary>
         public float? MarginTop {
             get {
                 if (Container is TableMenu table && table.RowFormats.Count > Row) {
-                    return Math.Min(_marginTop ?? 0f, table.RowFormats[Row].MarginBefore ?? _marginTop ?? 0f);
+                    return _marginTop ?? table.RowFormats[Row].MarginBefore ?? 0f;
                 }
                 return _marginTop;
             }
@@ -280,14 +280,14 @@ partial class TableMenu {
         /// <summary>
         /// Backing field for <see cref="MarginBottom"/>. 
         /// </summary>
-        public float? _marginBottom = 0f;
+        public float? _marginBottom = null;
         /// <summary>
         /// Margin to add to this cell's bottom side.
         /// </summary>
         public float? MarginBottom {
             get {
                 if (Container is TableMenu table && table.RowFormats.Count > Row) {
-                    return Math.Min(_marginBottom ?? 0f, table.RowFormats[Row].MarginAfter ?? _marginBottom ?? 0f);
+                    return _marginBottom ?? table.RowFormats[Row].MarginAfter ?? 0f;
                 }
                 return _marginBottom;
             }
@@ -446,6 +446,7 @@ partial class TableMenu {
         //update the relevant fields
         _width = base.Width = Math.Min(fullWidth, _displayWidth);
         _fullWidth = fullWidth;
+        MinWidth = _fullWidth;
         _height = base.Height = Math.Min(fullHeight, _displayHeight);
         _fullHeight = fullHeight;
     }

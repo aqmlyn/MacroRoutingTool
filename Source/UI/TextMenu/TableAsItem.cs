@@ -27,16 +27,31 @@ partial class TableMenu {
         /// </summary>
         public void GainFocus() {
             if (Menu != null) {
-                SelectWiggler.StopAndClear(); //otherwise the entire table would wiggle
                 if (Container != null) {
                     Container.Focused = false;
                     Container.RenderAsFocused = Menu.Items.Count == 0 || (!Menu.Items[0].Selectable && Menu.FirstPossibleSelection == 0);
                 }
+                SelectWiggler?.StopAndClear();
                 Menu.Focused = true;
-                Menu.FirstSelection();
                 foreach (var row in Menu.Rows) {
                     row.HoverIndex = row.FirstPossibleHover;
                 }
+                if (Input.MenuUp.Pressed) {
+                    Audio.Play("event:/ui/main/rollover_up");
+                    Menu.Selection = Menu.LastPossibleSelection;
+                } else {
+                    Audio.Play("event:/ui/main/rollover_down");
+                    Menu.Selection = Menu.FirstPossibleSelection;
+                }
+                if (Menu.Current != null) {
+                    if (Menu.Current is Row currentRow) {
+                        currentRow.HoveredItem?.SelectWiggler?.Start();
+                    } else {
+                        Menu.Current.SelectWiggler?.Start();
+                    }
+                }
+                Input.MenuUp.ConsumePress();
+                Input.MenuDown.ConsumePress();
             }
         }
 
@@ -64,6 +79,9 @@ partial class TableMenu {
         public virtual bool EnterCheck() => Selectable || Menu.UseNavigationCursor;
 
         public override void Added() {
+            Container.OnUpdate += () => {
+                Container.MinWidth = Math.Max(Container.MinWidth, Menu.MinWidth);
+            };
             if (Menu != null) {
                 Menu.DefaultNavigateUpFromTop = () => {
                     OnNavigateUpFromTop?.Invoke();
@@ -142,9 +160,6 @@ partial class TableMenu {
                 Selectable = SelectableCheck();
                 if (!Menu.Focused && Container?.Current == this && EnterCheck()) {
                     GainFocus();
-                    //vanilla checking for up/down doesn't consume them if found
-                    if (Input.MenuUp.Pressed) { Input.MenuUp.ConsumePress(); }
-                    if (Input.MenuDown.Pressed) { Input.MenuDown.ConsumePress(); }
                 }
                 Menu.Update();
             }
@@ -190,18 +205,18 @@ partial class TableMenu {
                 Input.MenuUp.ConsumePress();
                 LoseFocus();
                 HoveringLabel = true;
+                Audio.Play("event:/ui/main/rollover_up");
                 SelectWiggler.Start();
             };
-            OnEnter = () => {
+            OnEnter += () => {
                 Input.MenuUp.ConsumePress();
                 Input.MenuDown.ConsumePress();
             };
             //OnUpdate is the first thing in Update, so it runs before vanilla input checks, giving us a chance to consume the inputs
-            Container.OnUpdate = () => {
+            Container.OnUpdate += () => {
                 if (Container.Focused && Container.Current == this && Menu != null) {
-                    if (Input.MenuDown.Pressed) {
+                    if (!Collapsed && Input.MenuDown.Pressed) {
                         //when the label is hovered and down is pressed, navigate into the table
-                        Input.MenuDown.ConsumePress();
                         HoveringLabel = false;
                         GainFocus();
                     }
@@ -220,6 +235,7 @@ partial class TableMenu {
             if (Menu != null) {
                 if (Collapsed) {
                     Input.MenuConfirm.ConsumePress();
+                    Input.MenuUp.ConsumePress();
                     Collapsed = false;
                     Menu.Visible = true;
                     GainFocus(); //even if there is nothing to hover, the table needs focused so that it can consume the cancel input to close it

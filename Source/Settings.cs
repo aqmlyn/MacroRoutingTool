@@ -99,13 +99,20 @@ public class MRTSettings : EverestModuleSettings {
     /// <param name="menu">The full Mod Options menu.</param>
     /// <param name="sceneIsLevel">Whether the Mod Options menu was opened from a level or from another scene (e.g. <see cref="OuiMainMenu"/>).</param>
     public void CreateIOMenuEntry(TextMenu menu, bool sceneIsLevel) {
-        TableMenu table = new(){DisplayWidth = 1440f, UseNavigationCursor = false};
-        var tableItem = table.MakeSubmenuCollapsedIn(menu);
-        tableItem.CollapserLabel.Text = "IO";
-
+        const float tableMinWidth = 1440f;
         float leftPortion = 0.3f;
-        table.ColumnFormats.Add(new() { Justify = 0f, Measure = table.DisplayWidth * leftPortion });
-        table.ColumnFormats.Add(new() { Justify = 1f, Measure = table.DisplayWidth * (1f - leftPortion), MarginBefore = 20f });
+
+        TableMenu table = new(){DisplayWidth = tableMinWidth, UseNavigationCursor = false};
+        var tableItem = table.MakeSubmenuCollapsedIn(menu);
+        tableItem.OnUpdate += () => {
+            table.DisplayWidth = menu.Width;
+            table.ColumnFormats[0].Measure = table.DisplayWidth * leftPortion;
+            table.ColumnFormats[1].Measure = table.DisplayWidth * (1f - leftPortion);
+        };
+        tableItem.CollapserLabel.Text = "IO";
+        
+        table.ColumnFormats.Add(new() { Justify = 0f });
+        table.ColumnFormats.Add(new() { Justify = 1f, MarginBefore = 20f });
 
         var directoryRow = table.AddRow();
         var directoryLabel = new TableMenu.Label();
@@ -113,10 +120,19 @@ public class MRTSettings : EverestModuleSettings {
         directoryRow.Add(directoryLabel);
 
         var testButtonRow = table.AddRow();
-        var testButton = new TableMenu.Button();
-        testButton.Element.Text = "bnuuy";
-        testButton.OnPressed = () => Monocle.Engine.Commands.Log("bnuuy");
-        testButtonRow.Add(testButton);
+
+        var testButton1 = new TableMenu.Button();
+        testButton1.Element.Text = "bnuuy1";
+        testButton1.OnPressed = () => Monocle.Engine.Commands.Log("bnuuy1");
+        testButtonRow.Add(testButton1);
+
+        var testButton2 = new TableMenu.Button();
+        testButton2.Element.Text = "bnuuy2";
+        testButton2.OnPressed = () => Monocle.Engine.Commands.Log("bnuuy2");
+        testButtonRow.Add(testButton2);
+
+        testButton1.OnNavigateRight = table.HoverCell(testButton2);
+        testButton2.OnNavigateLeft = table.HoverCell(testButton1);
         
         foreach (var rowFormat in table.RowFormats) { rowFormat.Justify = 0.5f; }
     }
