@@ -85,17 +85,53 @@ partial class TableMenu {
         }
         set {DisplayHeight = value;}
     }
-    
+
+    /// <summary>
+    /// Backing field for <see cref="UseItemSpacing"/>. 
+    /// </summary>
+    public bool _useItemSpacing = true;
+    /// <summary>
+    /// If true, whenever this table is remeasured, any <see cref="RowFormats"/>' <see cref="MarginAfter"/> which is null will be set to
+    /// this menu's <see cref="ItemSpacing"/>.
+    /// </summary>
+    public bool UseItemSpacing {
+        get => _useItemSpacing;
+        set {
+            NeedsRemeasured |= _useItemSpacing != value;
+            _useItemSpacing = value;
+        }
+    }
+
+    /// <summary>
+    /// Backing field for <see cref="AllowShrinkWidth"/>. 
+    /// </summary>
+    public bool _allowShrinkWidth = true;
     /// <summary>
     /// If <see cref="FullWidth"/> is less than <see cref="DisplayWidth"/>,
     /// allow setting <see cref="Width"/> to <see cref="FullWidth"/> instead of <see cref="DisplayWidth"/>.  
     /// </summary>
-    public bool AllowShrinkWidth = true;
+    public bool AllowShrinkWidth {
+        get => _allowShrinkWidth;
+        set {
+            NeedsRemeasured |= _allowShrinkWidth != value;
+            _allowShrinkWidth = value;
+        }
+    }
+    /// <summary>
+    /// Backing field for <see cref="AllowShrinkHeight"/>. 
+    /// </summary>
+    public bool _allowShrinkHeight = true;
     /// <summary>
     /// If <see cref="FullHeight"/> is less than <see cref="DisplayHeight"/>,
     /// allow setting <see cref="Height"/> to <see cref="FullHeight"/> instead of <see cref="DisplayHeight"/>.  
     /// </summary>
-    public bool AllowShrinkHeight = true;
+    public bool AllowShrinkHeight {
+        get => _allowShrinkHeight;
+        set {
+            NeedsRemeasured |= _allowShrinkHeight != value;
+            _allowShrinkHeight = value;
+        }
+    }
 
     /// <summary>
     /// Stores configuration for formatting each <see cref="CellItem"/> in one row or column of a <see cref="TableMenu"/>. 
@@ -152,7 +188,7 @@ partial class TableMenu {
         /// <summary>
         /// Backing field for <see cref="MarginBefore"/>. 
         /// </summary>
-        public float? _marginBefore = 0f;
+        public float? _marginBefore = null;
         /// <summary>
         /// Top or left margin of each item on this axis.
         /// </summary>
@@ -166,7 +202,7 @@ partial class TableMenu {
         /// <summary>
         /// Backing field for <see cref="MarginAfter"/>. 
         /// </summary>
-        public float? _marginAfter = 0f;
+        public float? _marginAfter = null;
         /// <summary>
         /// Bottom or right margin of each item on this axis.
         /// </summary>
@@ -393,9 +429,9 @@ partial class TableMenu {
                         cell._column = columnIndex;
                         //set each cross measure using the cell on each axis with the longest individual cross measure.
                         var rowFormat = RowFormats.EnsureGet(rowIndex, _ => new() { Table = this });
-                        rowFormat._measure = Math.Max(rowFormat._measure, Math.Max(rowFormat.MinMeasure ?? 0f, Math.Min(rowFormat.MaxMeasure ?? float.PositiveInfinity, cell.UnrestrictedHeight())));
+                        rowFormat._measure = Math.Max(rowFormat.MinMeasure ?? 0f, Math.Min(rowFormat.MaxMeasure ?? float.PositiveInfinity, cell.UnrestrictedHeight() + (cell.MarginBottom ?? 0f) + Math.Max(cell.MarginTop ?? 0f, UseItemSpacing && rowIndex > 0 ? ItemSpacing : 0f)));
                         var columnFormat = ColumnFormats.EnsureGet(columnIndex, _ => new() { Table = this });
-                        columnFormat._measure = Math.Max(columnFormat._measure, Math.Max(columnFormat.MinMeasure ?? 0f, Math.Min(columnFormat.MaxMeasure ?? float.PositiveInfinity, cell.UnrestrictedWidth())));
+                        columnFormat._measure = Math.Max(columnFormat.MinMeasure ?? 0f, Math.Min(columnFormat.MaxMeasure ?? float.PositiveInfinity, cell.UnrestrictedWidth() + (cell.MarginLeft ?? 0f) + (cell.MarginRight ?? 0f)));
                     }
                 }
                 rowIndex++;

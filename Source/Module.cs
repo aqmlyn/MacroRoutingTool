@@ -45,6 +45,11 @@ public class MRT : EverestModule {
         UI.GraphViewer.DisableListeners();
     }
 
+    public override void LoadContent(bool firstLoad) {
+        base.LoadContent(firstLoad);
+        UI.UIHelperHooks.LoadAssets();
+    }
+
     public static string LogTag(params string[] subtags) => string.Join("/", "MacroroutingTool", subtags);
     public class LogTags {
         public const string Debug = "Debug";

@@ -32,4 +32,9 @@ public class MenuDataContainer : TextMenu.Item {
         result = fallback;
         return false;
     }
+    
+    /// <inheritdoc cref="MenuDataContainer"/>
+    public MenuDataContainer() : base() {
+        Visible = false;
+    }
 }

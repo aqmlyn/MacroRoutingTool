@@ -78,12 +78,6 @@ public static class DebugMapTweaks {
     public static GetterEventProperty<bool> HoverTextEnabled = new(){Value = true};
 
     /// <summary>
-    /// Needed to draw a rectangle with non-integer position and dimensions.
-    /// Using <see cref="Draw.Rect"/> results in those values being cast to integers,
-    /// causing visual discrepancies that become very noticeable as the camera zooms in.
-    /// </summary>
-    public static MTexture WhiteRect = null;
-    /// <summary>
     /// Called to initialize hover-text-related fields when opening the debug map.
     /// </summary>
     /// <param name="debugMap"></param>
@@ -93,9 +87,6 @@ public static class DebugMapTweaks {
     /// This method is only called when opening the debug map, which can only occur after the engine starts, which occurs after assets are loaded. 
     /// </remarks>
     public static void InitHoverText(MapEditor debugMap) {
-        //textures are Celeste assets
-        WhiteRect = GFX.Game["decals/generic/snow_o"]; //this texture carries in map BGs too, if there are no decals/generic/snow_o fans then i am dead
-
         //TextElements' fonts are Celeste assets
         HoverText = new(){
             {HoverIDs.RoomName, new(){Color = Color.Red, Scale = Vector2.One * HoverTextScale, BorderThickness = HoverTextBorderThickness, IgnoreZoom = true}},
@@ -116,13 +107,13 @@ public static class DebugMapTweaks {
                 mousePos.X + (CursorRadius + HoverTextHSpacing * 2) / camera.Zoom,
                 mousePos.Y - ((visibleCount % 2 == 0 ? HoverTextVSpacing / 2 : ActiveFont.LineHeight * HoverTextScale / 2) + ActiveFont.LineHeight * HoverTextScale * (visibleCount / 2) + HoverTextVSpacing * ((visibleCount - 1) / 2)) / camera.Zoom
             );
-            WhiteRect.Draw(
+            UIHelpers.Square.Draw(
                 new Vector2(drawPos.X - HoverTextHSpacing / camera.Zoom, drawPos.Y - HoverTextHSpacing / camera.Zoom),
                 Vector2.Zero,
                 Color.Black * HoverBackOpacity,
                 new Vector2(
-                    (visibleTexts.Max(elem => ActiveFont.Measure(elem.Text).X) * HoverTextScale + HoverTextHSpacing * 2) / camera.Zoom / WhiteRect.Width,
-                    (ActiveFont.LineHeight * HoverTextScale * visibleCount + HoverTextVSpacing * visibleCount + HoverTextHSpacing * 2) / camera.Zoom / WhiteRect.Width
+                    (visibleTexts.Max(elem => ActiveFont.Measure(elem.Text).X) * HoverTextScale + HoverTextHSpacing * 2) / camera.Zoom / UIHelpers.Square.Width,
+                    (ActiveFont.LineHeight * HoverTextScale * visibleCount + HoverTextVSpacing * visibleCount + HoverTextHSpacing * 2) / camera.Zoom / UIHelpers.Square.Width
                 )
             );
             foreach (var elem in visibleTexts) {

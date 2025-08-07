@@ -56,7 +56,8 @@ public partial class TableMenu {
                 if (UseDefaultColors) { Element.ColorsByState[UITextElement.States.Hovered] = Container?.HighlightColor ?? Element.ColorsByState[UITextElement.States.Hovered]; }
                 if (AutoState) { State.Value = hovered ? UITextElement.States.Hovered : UITextElement.States.Idle; }
                 Element.State = State.Value;
-                Element.Position = position;
+                Element.Position.X = position.X;
+                Element.Position.Y = position.Y;
                 Element.Justify.X = JustifyX ?? Element.Justify.X;
                 Element.Justify.Y = JustifyY ?? Element.Justify.Y;
                 Element.MaxWidth = LeftWidth();

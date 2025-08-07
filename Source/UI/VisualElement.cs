@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Monocle;
@@ -279,11 +280,6 @@ public class TextElement : VisualElement {
     /// </summary>
     public class Measurement {
         /// <summary>
-        /// The text that will be rendered. Newlines might have been inserted into the original text to fit as much of it as
-        /// possible in the space provided. 
-        /// </summary>
-        public string Text = "";
-        /// <summary>
         /// The scale at which the text will be rendered. Each axis of the original <see cref="VisualElement.Scale"/> might have
         /// been multiplied by a value to fit as much of the original text as possible in the space provided.
         /// </summary>
@@ -306,6 +302,35 @@ public class TextElement : VisualElement {
         /// The height that is actually needed to render the text in the space provided.
         /// </summary>
         public float Height = 0f;
+        /// <summary>
+        /// Measurements for a line of an element's text.
+        /// </summary>
+        public class Line {
+            /// <summary>
+            /// Index (0-indexed) at which the first character in this line appears in the element's original text.
+            /// </summary>
+            public int FirstIndex = 0;
+            /// <summary>
+            /// Index (0-indexed) at which the last character in this line appears in the element's original text.
+            /// </summary>
+            public int LastIndex = 0;
+            /// <summary>
+            /// The text which appears on this line.
+            /// </summary>
+            public string Text = "";
+            /// <summary>
+            /// The left edge of the first character on this line.
+            /// </summary>
+            public float LeftOffset = 0f;
+            /// <summary>
+            /// The right edge of the last character on this line.
+            /// </summary>
+            public float RightOffset = 0f;
+        }
+        /// <summary>
+        /// List of measurements for each line of this object's text.
+        /// </summary>
+        public List<Line> Lines = [];
     }
     /// <summary>
     /// Indicates to the <see cref="Measurements"/> getter whether <see cref="Measure"/> needs to be called before returning.
@@ -324,8 +349,9 @@ public class TextElement : VisualElement {
     } }
     public void Measure() {
         NeedsRemeasured = false;
+        _measurements = new();
 
-        _measurements.Text = Text;
+        var text = Text;
 
         //IgnoreZoom
         _measurements.Scale.X = Scale.X;
@@ -338,69 +364,205 @@ public class TextElement : VisualElement {
         
         //MinScale, MaxWidth, MaxHeight
         bool canShrink = MinScale > 0f && MinScale < 1f;
-        bool canWrap = MaxHeight >= Font.LineHeight * 2f;
+        int maxLineCount = (int)Math.Floor(_maxHeight / Font.LineHeight);
+        bool canWrap = maxLineCount > 1;
         if (canShrink && canWrap) {
-            
+            //TODO
         } else {
-            //adapted from Monocle.PixelFontSize.Measure(string)
-            int lineCount = 1;
+            Measurement.Line lastLine = new();
             if (canWrap) {
-
+                int textIndex = 0;
+                for (int i = 0; i < maxLineCount - 1 && textIndex < text.Length; i++) {
+                    Measurement.Line line = new() {FirstIndex = textIndex};
+                    _measurements.Lines.Add(line);
+                    float width = 0f;
+                    while (width < _maxWidth && textIndex < text.Length) {
+                        var ch = text[textIndex];
+                        if (ch == '\n') { 
+                            line.LastIndex = textIndex - 1;
+                            line.Text = text[line.FirstIndex..(line.LastIndex - line.FirstIndex)];
+                            line.LeftOffset = -width * Justify.X;
+                            line.RightOffset = line.LeftOffset + width;
+                            textIndex++;
+                            break;
+                        }
+                        //width check adapted from Monocle.PixelFontSize.Measure(string)
+                        if (Font.Characters.TryGetValue(ch, out var chm)) {
+                            var chWidth = chm.XAdvance;
+                            if (textIndex != line.FirstIndex) { chWidth += Font.KerningBetween(text[textIndex - 1], ch); }
+                            if (width + chWidth > _maxWidth) {
+                                line.LastIndex = textIndex - 1;
+                                line.Text = text[line.FirstIndex..(line.LastIndex - line.FirstIndex)];
+                                line.LeftOffset = -width * Justify.X;
+                                line.RightOffset = line.LeftOffset + width;
+                                break;
+                            }
+                            width += chWidth;
+                            textIndex++;
+                        }
+                    }
+                    if (textIndex >= text.Length) {
+                        line.LastIndex = text.Length - 1;
+                        line.Text = text[line.FirstIndex..(line.LastIndex - line.FirstIndex)];
+                        line.LeftOffset = -width * Justify.X;
+                        line.RightOffset = line.LeftOffset + width;
+                        goto FinishedLines;
+                    }
+                }
+                lastLine.FirstIndex = textIndex;
             }
-            _measurements.Width = 0f;
-            float maxWidth = MaxWidth * (canShrink ? MinScale : 1f);
+            _measurements.Lines.Add(lastLine);
+            float lastWidth = 0f;
+            float maxWidth = _maxWidth * (canShrink ? MinScale : 1f);
             bool needsTruncated = false;
             Stack<float> charWidths = new();
-            for (int i = 0; i < _measurements.Text.Length; i++) {
-                if (_measurements.Text[i] == '\n') {
-                    _measurements.Text = _measurements.Text[..(i - 1)];
+            for (int i = lastLine.FirstIndex; i < text.Length; i++) {
+                var ch = text[i];
+                if (ch == '\n') {
+                    lastLine.Text = text[..(i - 1)];
+                    lastLine.LastIndex = i - 1;
                     needsTruncated = true;
                     break;
                 }
-                if (Font.Characters.TryGetValue(_measurements.Text[i], out var ch)) {
-                    var ogWidth = _measurements.Width;
-                    _measurements.Width += ch.XAdvance;
-                    if (i < _measurements.Text.Length - 1 && ch.Kerning.TryGetValue(_measurements.Text[i + 1], out var kerning)) {
-                        _measurements.Width += kerning;
-                    }
-                    if (_measurements.Width > maxWidth) {
-                        _measurements.Text = _measurements.Text[..(i - 1)];
-                        _measurements.Width = ogWidth;
+                //adapted from Monocle.PixelFontSize.Measure(string)
+                if (Font.Characters.TryGetValue(ch, out var chm)) {
+                    var chmWidth = chm.XAdvance;
+                    if (i != lastLine.FirstIndex) { chmWidth += Font.KerningBetween(text[i - 1], ch); }
+                    if (lastWidth + chmWidth > maxWidth) {
+                        lastLine.Text = text[..(i - 1)];
+                        lastLine.LastIndex = i - 1;
                         needsTruncated = true;
                         break;
                     } else {
-                        charWidths.Push(_measurements.Width - ogWidth);
+                        lastWidth += chmWidth;
+                        charWidths.Push(chmWidth);
                     }
                 }
             }
             if (needsTruncated) {
                 float truncWidth = Font.Measure(OversizeTruncate).X;
-                while (_measurements.Width + truncWidth > maxWidth && charWidths.TryPop(out var charWidth)) {
-                    _measurements.Text = _measurements.Text[..^1];
-                    _measurements.Width -= charWidth;
+                while (lastWidth + truncWidth > maxWidth && charWidths.TryPop(out var charWidth)) {
+                    lastLine.Text = lastLine.Text[..^1];
+                    lastLine.LastIndex--;
+                    lastWidth -= charWidth;
                 }
-                _measurements.Text += OversizeTruncate;
+                lastLine.Text += OversizeTruncate;
+                //don't include OversizeTruncate characters in LastIndex 
+            } else {
+                lastLine.Text = text[lastLine.FirstIndex..];
+                lastLine.LastIndex = text.Length - 1 - lastLine.FirstIndex;
             }
-            if (canShrink) {
-                var spaceFactor = MaxWidth / _measurements.Width;
-                _measurements.ScaleFactor *= spaceFactor;
-                _measurements.Scale *= spaceFactor;
-            }
-            _measurements.Height = Font.LineHeight * lineCount;
+            lastLine.LeftOffset = -lastWidth * Justify.X;
+            lastLine.RightOffset = lastLine.LeftOffset + lastWidth;
         }
+
+        FinishedLines:
+        _measurements.Width = _measurements.Lines.Select(line => line.RightOffset - line.LeftOffset).Max();
+        if (canShrink) {
+            var spaceFactor = _maxWidth / _measurements.Width;
+            _measurements.ScaleFactor *= spaceFactor;
+            _measurements.Scale *= spaceFactor;
+        }
+        _measurements.Height = Font.LineHeight * _measurements.Lines.Count;
+    }
+
+    /// <summary>
+    /// Measurements related to a character at a specific index in a <see cref="TextElement"/> based on
+    /// that element's <see cref="Measurements"/> at the time this object was created.
+    /// </summary>
+    public class CharMeasurements {
+        /// <summary>
+        /// Whether this measurement was created before or after this character.
+        /// </summary>
+        public bool After = false;
+        /// <summary>
+        /// A position relative to this <see cref="TextElement"/>'s <see cref="VisualElement.Position"/> based on this character's position.
+        /// <list type="bullet">
+        /// <item>If the index is exactly the current character count or if <see cref="After"/> is true and the next character is a newline, return the right edge of the last character.</item>
+        /// <item>If the index is 0 or if <see cref="After"/> is false and the previous character is a newline, return the left edge of the character at the given index.</item>
+        /// <item>Otherwise, return the center of the <seealso href="https://en.wikipedia.org/wiki/Kerning#Kerning_values">kerning</seealso> to the left of the character at the given index.</item>
+        /// </list>
+        /// </summary>
+        public Vector2 Offset = Vector2.Zero;
+        /// <summary>
+        /// Index (0-indexed) of this character in this <see cref="TextElement"/>'s <see cref="Measurements"/>' text copy.
+        /// </summary>
+        public int Index = 0;
+        /// <summary>
+        /// Index (0-indexed) of this character in the line in which it appears in this <see cref="TextElement"/>'s <see cref="Measurements"/>' text copy.
+        /// </summary>
+        public int IndexInLine = 0;
+        /// <summary>
+        /// Line number (0-indexed) of the line in which this character appears in this <see cref="TextElement"/>'s <see cref="Measurements"/>' text copy.
+        /// </summary>
+        public int Line = 0;
+    }
+    
+    /// <summary>
+    /// Return a position, relative to this element's current <see cref="VisualElement.Position"/>, based on the given index (0-indexed) of this element's current <see cref="Text"/>.
+    /// <list type="bullet">
+    /// <item>If the index is exactly the current character count or if <paramref name="after"/> is true and the next character is a newline, return the right edge of the last character.</item>
+    /// <item>If the index is 0 or if <paramref name="after"/> is false and the previous character is a newline, return the left edge of the character at the given index.</item>
+    /// <item>Otherwise, return the center of the <seealso href="https://en.wikipedia.org/wiki/Kerning#Kerning_values">kerning</seealso> to the left of the character at the given index.</item>
+    /// </list>
+    /// </summary>
+    /// <param name="index">Index (0-indexed) in the current text of the character to return a position in relation to.</param>
+    /// <param name="after">If the character at the given index is a newline, false will return the right edge of the line it ends, and true
+    /// will return the left edge of the line it begins. Otherwise, true effectively just moves given index one character forward.</param>
+    /// <exception cref="NullReferenceException"><see cref="Text"/> currently returns null.</exception>
+    /// <exception cref="IndexOutOfRangeException"><paramref name="index"/> was negative or greater than <see cref="Text"/>'s current <see cref="string.Length"/>.</exception>
+    public CharMeasurements MeasureChar(Index index, bool after = false) {
+        var text = Text ?? throw new NullReferenceException("This element's text is currently null.");
+        var idxval = index.GetOffset(text.Length);
+        if (idxval < 0 || idxval >= text.Length) { throw new IndexOutOfRangeException($"Received index {idxval} (from '{index}') which is out-of-range for text with length {text.Length}: {text}"); }
+        if (NeedsRemeasured) { Measure(); }
+        if (text[idxval] == '\n') {
+            if (after) { idxval++; } else { idxval--; }
+            idxval = Calc.Clamp(idxval, 0, text.Length - 1);
+            after = !after;
+        }
+        CharMeasurements chm = new() { Index = idxval, After = after, Offset = Vector2.Zero - new Vector2(_measurements.Width, _measurements.Height) * Justify};
+        for (int i = 0; i < _measurements.Lines.Count; i++) {
+            var line = _measurements.Lines[i];
+            if (line.LastIndex < idxval) { continue; }
+            chm.Line = i;
+            chm.IndexInLine = idxval - line.FirstIndex;
+            chm.Offset.Y += Font.LineHeight * _measurements.Scale.Y * chm.Line;
+            chm.Offset.X += Font.Measure(line.Text[..chm.IndexInLine]).X;
+            if (after && Font.Characters.TryGetValue(line.Text[chm.IndexInLine], out var ch)) { chm.Offset.X += ch.XAdvance; }
+            return chm;
+        }
+        //should be unreachable -- if not, the last row's LastIndex is less than the given index, and since the given index isn't out of range, this can only mean there's more text that wasn't measured
+        throw new System.Diagnostics.UnreachableException($"{nameof(TextElement)}.{nameof(Measure)} seems to have a logical error that prevented some of this element's text from being measured. Please report this to the Macrorouting Tool developer!");
     }
 
     public override void Render() {
         var ogSpriteBatch = Draw.SpriteBatch;
         Draw.SpriteBatch = SpriteBatch;
 
-        var msrmts = Measurements;
+        if (NeedsRemeasured) { Measure(); }
+
+        var position = new Vector2(0f, Position.Y - _measurements.Height * Justify.Y);
         if (DropShadowOffset != null) {
-            Font.DrawEdgeOutline(msrmts.Text, Position, Justify, msrmts.Scale, Color, (float)DropShadowOffset, DropShadowColor, (BorderThickness ?? 0f) * msrmts.ScaleFactor, BorderColor);
+            var borderThickness = (BorderThickness ?? 0f) * _measurements.ScaleFactor;
+            foreach (var line in _measurements.Lines) {
+                position.X = Position.X + line.LeftOffset;
+                Font.DrawEdgeOutline(line.Text, position, Vector2.Zero, _measurements.Scale, Color, (float)DropShadowOffset, DropShadowColor, borderThickness, BorderColor);
+                position.Y += Font.LineHeight;
+            }
         } else if (BorderThickness != null) {
-            Font.DrawOutline(msrmts.Text, Position, Justify, msrmts.Scale, Color, (float)BorderThickness * msrmts.ScaleFactor, BorderColor);
+            var borderThickness = (float)BorderThickness * _measurements.ScaleFactor;
+            foreach (var line in _measurements.Lines) {
+                position.X = Position.X + line.LeftOffset;
+                Font.DrawOutline(line.Text, position, Vector2.Zero, _measurements.Scale, Color, borderThickness, BorderColor);
+                position.Y += Font.LineHeight;
+            }
         } else {
-            Font.Draw(msrmts.Text, Position, Justify, msrmts.Scale, Color);
+            foreach (var line in _measurements.Lines) {
+                position.X = Position.X + line.LeftOffset;
+                Font.Draw(line.Text, position, Vector2.Zero, _measurements.Scale, Color);
+                position.Y += Font.LineHeight;
+            }
         }
 
         Draw.SpriteBatch = ogSpriteBatch;
@@ -470,6 +632,44 @@ public class TextureElement : VisualElement {
     /// Axes about which the texture is to be flipped.
     /// </summary>
     public SpriteEffects Flip = SpriteEffects.None;
+    
+    /// <summary>
+    /// Modify this element's <see cref="Scale"/> so that it will have the specified dimensions.
+    /// </summary>
+    /// <param name="width">The width this element should have.</param>
+    /// <param name="height">The height this element should have.</param>
+    public void ScaleToFit(float width, float height) {
+        Scale.X = width / Texture.Width;
+        Scale.Y = height / Texture.Height;
+    }
+
+    /// <summary>
+    /// <inheritdoc cref="ScaleToFit(float, float)"/>
+    /// </summary>
+    /// <param name="dimensions">Vector whose X is the width this element should have and Y is the height this element should have.</param>
+    public void ScaleToFit(Vector2 dimensions) => ScaleToFit(dimensions.X, dimensions.Y);
+    
+    /// <summary>
+    /// Modify this element's <see cref="Scale"/>'s horizontal component so that the element will have the specified width.
+    /// </summary>
+    /// <param name="width">The width this element should have.</param>
+    /// <param name="maintainRatio">If true (default), <see cref="Scale"/>'s vertical component will be set to the
+    /// same as its new horizontal component in order to maintain the texture's aspect ratio.</param>
+    public void ScaleXToFit(float width, bool maintainRatio = true) {
+        Scale.X = width / Texture.Width;
+        if (maintainRatio) { Scale.Y = Scale.X; }
+    }
+
+    /// <summary>
+    /// Modify this element's <see cref="Scale"/>'s vertical component so that the element will have the specified height.
+    /// </summary>
+    /// <param name="height">The height this element should have.</param>
+    /// <param name="maintainRatio">If true (default), <see cref="Scale"/>'s horizontal component will be set to the
+    /// same as its new vertical component in order to maintain the texture's aspect ratio.</param>
+    public void ScaleYToFit(float height, bool maintainRatio = true) {
+        Scale.Y = height / Texture.Height;
+        if (maintainRatio) { Scale.X = Scale.Y; }
+    }
     
     public override void Render() {
         if (Texture == null) {return;}

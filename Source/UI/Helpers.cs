@@ -25,6 +25,11 @@ public static class UIHelperHooks {
         ILSpriteBatchEnd.Dispose();
     }
     
+    public static void LoadAssets() {
+        UIHelpers.Square = GFX.Game["util/pixel"];
+        UIHelpers.FilledCircle = GFX.Gui["dot"];
+    }
+    
     public static void EnableIL_SpriteBatchBegin(ILContext ilctx) {
         ILCursor ilcur = new(ilctx);
         ilcur.EmitLdarg0(); //EmitLdarga(0) is invalid btw
@@ -41,6 +46,15 @@ public static class UIHelperHooks {
 }
 
 public static class UIHelpers {
+    /// <summary>
+    /// Needed to draw a rectangle with non-integer position and dimensions.
+    /// Using <see cref="Draw.Rect"/> results in those values being cast to integers,
+    /// causing visual discrepancies that become very noticeable as the camera zooms in.
+    /// </summary>
+    public static MTexture Square = null;
+
+    public static MTexture FilledCircle = null;
+    
     /// <summary>
     /// Finds a texture for a given bind using prioritization designed for the debug map.<br/>
     /// <list type="number">
@@ -144,6 +158,12 @@ public static class UIHelpers {
         return new(camera.Left + (camera.Origin.X + self.X) / camera.Zoom, camera.Top + (camera.Origin.Y + self.Y) / camera.Zoom);
     }
 
+    /// <summary>
+    /// Returns the distance between this point and the closest point on the line segment between the given points.
+    /// </summary>
+    /// <param name="self">The point whose distance to the segment is being calculated.</param>
+    /// <param name="p1">An endpoint of the line segment.</param>
+    /// <param name="p2">An endpoint of the line segment.</param>
     public static float DistanceToLineSegment(this Vector2 self, Vector2 p1, Vector2 p2) {
         //if angle self,p1,p2 is obtuse, p1 is the closest point
         float p1angle = Math.Abs((p2 - p1).Angle() - (self - p1).Angle());
@@ -160,4 +180,16 @@ public static class UIHelpers {
         //if both are acute, closest point is on the line that passes through p1 and p2
         return (float)(Math.Abs(Math.Sin((p2 - p1).Angle() - (self - p1).Angle())) * (self - p1).Length());
     }
+
+    /// <summary>
+    /// Returns the <seealso href="https://en.wikipedia.org/wiki/Kerning#Kerning_values">kerning</seealso> (horizontal offset) that
+    /// this font applies to the right character when it appears after the left character.
+    /// </summary>
+    /// <param name="font">The font in which the characters are being rendered.</param>
+    /// <param name="left">The left character.</param>
+    /// <param name="right">The right character.</param>
+    public static int KerningBetween(this PixelFontSize font, PixelFontCharacter left, int right) => left.Kerning.TryGetValue(right, out var kerning) ? kerning : 0;
+    
+    /// <inheritdoc cref="KerningBetween(PixelFontSize, PixelFontCharacter, int)"/>
+    public static int KerningBetween(this PixelFontSize font, int left, int right) => font.Characters.TryGetValue(left, out var ch) ? font.KerningBetween(ch, right) : 0;
 }

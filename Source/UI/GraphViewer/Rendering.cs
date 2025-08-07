@@ -225,7 +225,7 @@ public static partial class GraphViewer {
     public static void RenderGraph(MapEditor debugMap, Camera camera) {
         //graph background
         if (Mode != (int)Modes.Disabled) {
-            DebugMapTweaks.WhiteRect.Draw(new Vector2(camera.Left + (MenuWidth + MarginH * 4 - 1) / camera.Zoom, camera.Top + HeadbarHeight / camera.Zoom), Vector2.Zero, Color.Black * GraphBackOpacity, new Vector2((Celeste.TargetWidth - (MenuWidth + MarginH * 4 - 1)) / camera.Zoom, (Celeste.TargetHeight - HeadbarHeight) / camera.Zoom));
+            UIHelpers.Square.Draw(new Vector2(camera.Left + (MenuWidth + MarginH * 4 - 1) / camera.Zoom, camera.Top + HeadbarHeight / camera.Zoom), Vector2.Zero, Color.Black * GraphBackOpacity, new Vector2((Celeste.TargetWidth - (MenuWidth + MarginH * 4 - 1)) / camera.Zoom, (Celeste.TargetHeight - HeadbarHeight) / camera.Zoom));
         }
 
         if (Graph != null) {
@@ -243,7 +243,7 @@ public static partial class GraphViewer {
                     Data.Point connFrom = Graph.Points.First(pt => pt.ID == conn.From);
                     Data.Point connTo = Graph.Points.First(pt => pt.ID == conn.To);
                     Vector2 diff = new Vector2(connTo.X, connTo.Y) - new Vector2(connFrom.X, connFrom.Y);
-                    DebugMapTweaks.WhiteRect.Draw(new Vector2(connFrom.X, connFrom.Y), new Vector2(0f, DebugMapTweaks.WhiteRect.Height / 2f), color, new Vector2((diff.Length() - arrowhead.Width / camera.Zoom / 2) / DebugMapTweaks.WhiteRect.Width, ConnectionLineThickness / camera.Zoom / DebugMapTweaks.WhiteRect.Height), diff.Angle());
+                    UIHelpers.Square.Draw(new Vector2(connFrom.X, connFrom.Y), new Vector2(0f, UIHelpers.Square.Height / 2f), color, new Vector2((diff.Length() - arrowhead.Width / camera.Zoom / 2) / UIHelpers.Square.Width, ConnectionLineThickness / camera.Zoom / UIHelpers.Square.Height), diff.Angle());
                     arrowhead.Draw(new Vector2(connTo.X, connTo.Y), new Vector2(arrowhead.Width, arrowhead.Height / 2f), color, 1f / camera.Zoom, diff.Angle());
                 }
             }

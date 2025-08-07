@@ -173,7 +173,7 @@ public partial class TableMenu : TextMenu {
         public override void Render(Vector2 position, bool hovered) {
             Vector2 origPosition = new(position.X, position.Y);
             if (Container is TableMenu table) {
-                var height = Height();
+                var height = Height() + Container.ItemSpacing; //Row.Height subtracts ItemSpacing to negate its effect in TextMenu.Render (since vertical margins should be used instead)
                 position.Y -= height / 2f; //TextMenus expect items to be rendering text with justify.Y = 0.5f, but rows can have different justifies
                 var tableTopLeft = new Vector2(table.Position.X - table.Justify.X * table.Width, table.Position.Y - table.Justify.Y * table.Height);
                 if (position.Y > Engine.Height || position.Y - tableTopLeft.Y > table.Height) { return; } //if row is below display area, cull row
@@ -183,7 +183,7 @@ public partial class TableMenu : TextMenu {
                     var width = table.ColumnFormats[column].Measure;
                     if (item != null) {
                         if (item.MarginTop + item.MarginBottom > height || item.MarginLeft + item.MarginRight > width) { continue; } //if item's margins leave no room, cull item
-                        var top = position.Y + (item.MarginTop ?? 0f);
+                        var top = position.Y + Math.Max(item.MarginTop ?? 0f, table.UseItemSpacing ? table.ItemSpacing : 0f);
                         if (top > Engine.Height || top - tableTopLeft.Y > table.Height) { continue; } //if item is below display area only due to top margin, cull item
                         position.X += item.MarginLeft ?? 0f;
                         width -= (item.MarginLeft ?? 0f) + (item.MarginRight ?? 0f);
@@ -194,11 +194,13 @@ public partial class TableMenu : TextMenu {
                     }
                     position.X += width;
                 }
+            } else {
+                //TODO rendering when the container is not a table
             }
             base.Render(origPosition, hovered);
         }
 
-        public override float Height() => Items.Count == 0 ? 0f : Items.Max(item => item.Height());
+        public override float Height() => (Items.Count == 0 ? 0f : Items.Max(item => item.Height())) - ((Container as TableMenu)?.ItemSpacing ?? 0f);
         public override float LeftWidth() => Items.Count == 0 ? 0f : Items.Aggregate(0f, (sum, item) => sum += item.LeftWidth());
 
         public override void ConfirmPressed() {
@@ -294,7 +296,7 @@ public partial class TableMenu : TextMenu {
     public override void Render() {
         if (NeedsRemeasured) {AssignMeasures();}
         if (UseNavigationCursor) {
-            //TODO once MultiDisplayData.ScrollOffset and .ScrollTarget are working, set them according to CursorItem's center
+            //TODO once MultiDisplayData.ScrollOffset and .ScrollTarget are working properly, set them according to CursorItem's center
         }
         base.Render();
     }
