@@ -307,13 +307,17 @@ public class TextElement : VisualElement {
         /// </summary>
         public class Line {
             /// <summary>
+            /// Index (0-indexed) of this line in the element's to-be-rendered text. 
+            /// </summary>
+            public int Index = 0;
+            /// <summary>
             /// Index (0-indexed) at which the first character in this line appears in the element's original text.
             /// </summary>
-            public int FirstIndex = 0;
+            public int FirstCharIndex = 0;
             /// <summary>
-            /// Index (0-indexed) at which the last character in this line appears in the element's original text.
+            /// Index (0-indexed) at which the last character in this line from the original text appears in the full original text.
             /// </summary>
-            public int LastIndex = 0;
+            public int LastCharIndex = 0;
             /// <summary>
             /// The text which appears on this line.
             /// </summary>
@@ -373,14 +377,14 @@ public class TextElement : VisualElement {
             if (canWrap) {
                 int textIndex = 0;
                 for (int i = 0; i < maxLineCount - 1 && textIndex < text.Length; i++) {
-                    Measurement.Line line = new() {FirstIndex = textIndex};
+                    Measurement.Line line = new() {FirstCharIndex = textIndex, Index = i};
                     _measurements.Lines.Add(line);
                     float width = 0f;
                     while (width < _maxWidth && textIndex < text.Length) {
                         var ch = text[textIndex];
                         if (ch == '\n') { 
-                            line.LastIndex = textIndex - 1;
-                            line.Text = text[line.FirstIndex..(line.LastIndex - line.FirstIndex)];
+                            line.LastCharIndex = textIndex - 1;
+                            line.Text = text[line.FirstCharIndex..(line.LastCharIndex - line.FirstCharIndex)];
                             line.LeftOffset = -width * Justify.X;
                             line.RightOffset = line.LeftOffset + width;
                             textIndex++;
@@ -389,10 +393,10 @@ public class TextElement : VisualElement {
                         //width check adapted from Monocle.PixelFontSize.Measure(string)
                         if (Font.Characters.TryGetValue(ch, out var chm)) {
                             var chWidth = chm.XAdvance;
-                            if (textIndex != line.FirstIndex) { chWidth += Font.KerningBetween(text[textIndex - 1], ch); }
+                            if (textIndex != line.FirstCharIndex) { chWidth += Font.KerningBetween(text[textIndex - 1], ch); }
                             if (width + chWidth > _maxWidth) {
-                                line.LastIndex = textIndex - 1;
-                                line.Text = text[line.FirstIndex..(line.LastIndex - line.FirstIndex)];
+                                line.LastCharIndex = textIndex - 1;
+                                line.Text = text[line.FirstCharIndex..(line.LastCharIndex - line.FirstCharIndex)];
                                 line.LeftOffset = -width * Justify.X;
                                 line.RightOffset = line.LeftOffset + width;
                                 break;
@@ -402,35 +406,36 @@ public class TextElement : VisualElement {
                         }
                     }
                     if (textIndex >= text.Length) {
-                        line.LastIndex = text.Length - 1;
-                        line.Text = text[line.FirstIndex..(line.LastIndex - line.FirstIndex)];
+                        line.LastCharIndex = text.Length - 1;
+                        line.Text = text[line.FirstCharIndex..(line.LastCharIndex - line.FirstCharIndex)];
                         line.LeftOffset = -width * Justify.X;
                         line.RightOffset = line.LeftOffset + width;
                         goto FinishedLines;
                     }
                 }
-                lastLine.FirstIndex = textIndex;
+                lastLine.Index = maxLineCount;
+                lastLine.FirstCharIndex = textIndex;
             }
             _measurements.Lines.Add(lastLine);
             float lastWidth = 0f;
             float maxWidth = _maxWidth * (canShrink ? MinScale : 1f);
             bool needsTruncated = false;
             Stack<float> charWidths = new();
-            for (int i = lastLine.FirstIndex; i < text.Length; i++) {
+            for (int i = lastLine.FirstCharIndex; i < text.Length; i++) {
                 var ch = text[i];
                 if (ch == '\n') {
                     lastLine.Text = text[..(i - 1)];
-                    lastLine.LastIndex = i - 1;
+                    lastLine.LastCharIndex = i - 1;
                     needsTruncated = true;
                     break;
                 }
                 //adapted from Monocle.PixelFontSize.Measure(string)
                 if (Font.Characters.TryGetValue(ch, out var chm)) {
                     var chmWidth = chm.XAdvance;
-                    if (i != lastLine.FirstIndex) { chmWidth += Font.KerningBetween(text[i - 1], ch); }
+                    if (i != lastLine.FirstCharIndex) { chmWidth += Font.KerningBetween(text[i - 1], ch); }
                     if (lastWidth + chmWidth > maxWidth) {
                         lastLine.Text = text[..(i - 1)];
-                        lastLine.LastIndex = i - 1;
+                        lastLine.LastCharIndex = i - 1;
                         needsTruncated = true;
                         break;
                     } else {
@@ -443,14 +448,14 @@ public class TextElement : VisualElement {
                 float truncWidth = Font.Measure(OversizeTruncate).X;
                 while (lastWidth + truncWidth > maxWidth && charWidths.TryPop(out var charWidth)) {
                     lastLine.Text = lastLine.Text[..^1];
-                    lastLine.LastIndex--;
+                    lastLine.LastCharIndex--;
                     lastWidth -= charWidth;
                 }
                 lastLine.Text += OversizeTruncate;
-                //don't include OversizeTruncate characters in LastIndex 
+                //LastCharIndex will be the index of the last character *before* OversizeTruncate's first character
             } else {
-                lastLine.Text = text[lastLine.FirstIndex..];
-                lastLine.LastIndex = text.Length - 1 - lastLine.FirstIndex;
+                lastLine.Text = text[lastLine.FirstCharIndex..];
+                lastLine.LastCharIndex = text.Length - 1 - lastLine.FirstCharIndex;
             }
             lastLine.LeftOffset = -lastWidth * Justify.X;
             lastLine.RightOffset = lastLine.LeftOffset + lastWidth;
@@ -493,9 +498,9 @@ public class TextElement : VisualElement {
         /// </summary>
         public int IndexInLine = 0;
         /// <summary>
-        /// Line number (0-indexed) of the line in which this character appears in this <see cref="TextElement"/>'s <see cref="Measurements"/>' text copy.
+        /// Measurements for the line in which this character appears in this <see cref="TextElement"/>'s <see cref="Measurements"/>' text copy.
         /// </summary>
-        public int Line = 0;
+        public Measurement.Line Line = null;
     }
     
     /// <summary>
@@ -524,15 +529,16 @@ public class TextElement : VisualElement {
         CharMeasurements chm = new() { Index = idxval, After = after, Offset = Vector2.Zero - new Vector2(_measurements.Width, _measurements.Height) * Justify};
         for (int i = 0; i < _measurements.Lines.Count; i++) {
             var line = _measurements.Lines[i];
-            if (line.LastIndex < idxval) { continue; }
-            chm.Line = i;
-            chm.IndexInLine = idxval - line.FirstIndex;
-            chm.Offset.Y += Font.LineHeight * _measurements.Scale.Y * chm.Line;
+            if (line.LastCharIndex < idxval) { continue; }
+            chm.Line = line;
+            chm.IndexInLine = idxval - line.FirstCharIndex;
+            chm.Offset.Y += Font.LineHeight * _measurements.Scale.Y * i;
             chm.Offset.X += Font.Measure(line.Text[..chm.IndexInLine]).X;
             if (after && Font.Characters.TryGetValue(line.Text[chm.IndexInLine], out var ch)) { chm.Offset.X += ch.XAdvance; }
             return chm;
         }
-        //should be unreachable -- if not, the last row's LastIndex is less than the given index, and since the given index isn't out of range, this can only mean there's more text that wasn't measured
+        //should be unreachable -- if not, the last row's LastIndex is less than the given index,
+        //but the given index isn't out of range of the original text. this can only mean there's more text that wasn't measured
         throw new System.Diagnostics.UnreachableException($"{nameof(TextElement)}.{nameof(Measure)} seems to have a logical error that prevented some of this element's text from being measured. Please report this to the Macrorouting Tool developer!");
     }
 

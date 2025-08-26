@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Microsoft.Xna.Framework;
+using Monocle;
 
 namespace Celeste.Mod.MacroRoutingTool.UI;
 
@@ -14,6 +15,11 @@ partial class TableMenu {
         /// Whether this text input is currently being typed in.
         /// </summary>
         public bool Typing = false;
+
+        /// <summary>
+        /// Whether the user is able to press Shift + Enter to insert newline characters into the text.
+        /// </summary>
+        public bool AllowNewline = false;
 
         /// <summary>
         /// The texture drawn as the background of this text input field.
@@ -37,15 +43,6 @@ partial class TableMenu {
         /// </summary>
         public class InputEventInstructions {
             /// <summary>
-            /// Whether to consume the input received this frame. Consuming inputs from <see cref="TextInput.OnInput"/> prevents them from
-            /// causing menu-related actions to be performed even if bound to those actions.
-            /// </summary>
-            /// <remarks>
-            /// For example, the default <see cref="Input.MenuCancel"/> keyboard bind is X. With that bind, if the default <see cref="OnReceiveInput"/>
-            /// event for Ctrl+X didn't set this field to true, pressing Ctrl+X would close the menu immediately after cutting the selected text.
-            /// </remarks>
-            public bool ConsumeInput = false;
-            /// <summary>
             /// Whether to stop checking for input matches after this event subscriber returns.
             /// </summary>
             public bool Break = false;
@@ -56,16 +53,16 @@ partial class TableMenu {
         public delegate void InputEventSubscriber(TextEntry textEntry, InputEventInstructions evInstr);
 
         /// <summary>
-        /// Each key is a character, and each value is a function to be called when that character is received.<br/>
-        /// If a value function performs an action (rather than just checking if it should perform an action), it should set
-        /// its received <see cref="InputEventInstructions.ConsumeInput"/> (and usually <see cref="InputEventInstructions.Break"/>) to true.
+        /// Each key is a function that receives the detected character and returns a Boolean.<br/>
+        /// Each value is a function to be called if the key returns true. The function receives this <see cref="TextEntry"/> and the detected character.<br/>
+        /// If a value function performs an action (rather than just checking if it should perform an action),
+        /// it usually should set <see cref="InputEventInstructions.Break"/> to true.
         /// </summary>
-        public Dictionary<char, InputEventSubscriber> OnReceiveChar = [];
+        public Dictionary<Func<char, bool>, Action<TextEntry, char, InputEventInstructions>> OnReceiveChar = [];
         /// <summary>
         /// Each key is a function that returns a Boolean, intended to check whether the user has pressed certain key(s).
         /// Each value is a function to be called whenever the key returns true.<br/>
-        /// If a value function performs an action (rather than just checking if it should perform an action), it should set
-        /// its received <see cref="InputEventInstructions.ConsumeInput"/> to true. If the action was performed based on
+        /// If a value function performs an action (rather than just checking if it should perform an action) based on
         /// a non-modifier key, it usually should set <see cref="InputEventInstructions.Break"/> to true.
         /// </summary>
         public Dictionary<Func<bool>, InputEventSubscriber> OnReceiveInput = [];
@@ -107,6 +104,9 @@ partial class TableMenu {
         /// A <see cref="TextEntry"/>'s <seealso href="https://en.wikipedia.org/wiki/Caret_navigation">caret</seealso>. 
         /// </summary>
         public class TextCaret {
+            /// <summary>
+            /// Default color of the caret in every text entry cell.
+            /// </summary>
             public static Color DefaultColor = HighlightColorB * 0.9f;
 
             /// <summary>
@@ -144,6 +144,92 @@ partial class TableMenu {
         /// This <see cref="TextEntry"/>'s <seealso href="https://en.wikipedia.org/wiki/Caret_navigation">caret</seealso>. 
         /// </summary>
         public TextCaret Caret = new();
+
+        /// <summary>
+        /// Text inputs received this frame. Recorded by <see cref="RecordTextInput"/> and processed by <see cref="Update"/>.
+        /// </summary>
+        public Queue<char> TextInputsThisFrame = [];
+
+        ~TextEntry() {
+            if (Typing) { LoseFocus(); }
+        }
+
+        /// <summary>
+        /// Record the given character into <see cref="TextInputsThisFrame"/>. Characters are recorded, rather than
+        /// acted upon immediately, so that <see cref="Update"/> can give inputs a chance to take priority over characters.
+        /// </summary>
+        public void RecordTextInput(char ch) {
+            TextInputsThisFrame.Enqueue(ch);
+        }
+
+        /// <summary>
+        /// Called when the user starts typing in this text entry.
+        /// </summary>
+        public void GainFocus() {
+            Typing = true;
+            if (Container != null) {
+                Container.Focused = false;
+                Container.RenderAsFocused = true;
+            }
+            TextInput.OnInput += RecordTextInput;
+        }
+
+        /// <summary>
+        /// Called when the user finishes typing in this text entry.
+        /// </summary>
+        public void LoseFocus() {
+            TextInput.OnInput -= RecordTextInput;
+            Typing = false;
+            if (Container != null) {
+                Container.Focused = true;
+                Container.RenderAsFocused = false;
+            }
+        }
+
+        /// <summary>
+        /// Default check for whether a given character is able to be inserted into the text.
+        /// </summary>
+        public bool DefaultInsertCheck(char ch) => TextElement.Font.Characters.ContainsKey(ch);
+
+        /// <summary>
+        /// If any text is selected, replace it with the given character. Otherwise, insert the given character at the caret's current position.
+        /// </summary>
+        public void InsertAtCaret(char ch) {
+            int insertStart;
+            int insertEnd;
+            if (Caret.Anchor < Caret.Focus) {
+                insertStart = Caret.Anchor;
+                insertEnd = Caret.Focus;
+            } else {
+                insertStart = Caret.Focus;
+                insertEnd = Caret.Anchor;
+            }
+            var existingText = TextElement.Text;
+            TextElement.Text = existingText[..insertStart] + ch + existingText[insertEnd..];
+        }
+
+        public override void Update() {
+            foreach (var inputListener in OnReceiveInput) {
+                if (inputListener.Key?.Invoke() ?? false) {
+                    var evInstr = new InputEventInstructions();
+                    inputListener.Value?.Invoke(this, evInstr);
+                    if (evInstr.Break) { break; }
+                }
+            }
+
+            while (TextInputsThisFrame.TryDequeue(out var ch)) {
+                foreach (var charListener in OnReceiveChar) {
+                    if (charListener.Key?.Invoke(ch) ?? false) {
+                        var evInstr = new InputEventInstructions();
+                        charListener.Value?.Invoke(this, ch, evInstr);
+                        if (evInstr.Break) {
+                            TextInputsThisFrame.Clear();
+                            return;
+                        }
+                    }
+                }
+            }
+        }
 
         public override float UnrestrictedWidth() => float.MaxValue;
         public override float UnrestrictedHeight() => float.MaxValue;
@@ -193,6 +279,7 @@ partial class TableMenu {
                     Caret.Offset = focusMeasure.Offset;
                     if (Caret.Anchor != Caret.Focus) {
                         //selected text
+                        SelectElement.Justify.Y = JustifyY ?? TextElement.Justify.Y;
                         var anchorMeasure = TextElement.MeasureChar(Caret.Anchor);
                         TextElement.CharMeasurements firstMeasure;
                         TextElement.CharMeasurements secondMeasure;
@@ -203,29 +290,39 @@ partial class TableMenu {
                             firstMeasure = focusMeasure;
                             secondMeasure = anchorMeasure;
                         }
-                        SelectElement.Position.X = position.X + firstMeasure.Offset.X;
-                        SelectElement.Position.Y = position.Y + firstMeasure.Offset.Y;
-                        SelectElement.Justify.Y = JustifyY ?? TextElement.Justify.Y;
-                        var line = firstMeasure.Line;
-                        while (line <= secondMeasure.Line) {
-                            
-                        }
-                        if (anchorMeasure.Line == focusMeasure.Line) {
+                        if (firstMeasure.Line == secondMeasure.Line) {
                             //all on one line
                             SelectElement.Position.X = position.X + firstMeasure.Offset.X;
                             SelectElement.Position.Y = position.Y + firstMeasure.Offset.Y;
-                            SelectElement.Justify.Y = JustifyY ?? TextElement.Justify.Y;
                             SelectElement.ScaleToFit(secondMeasure.Offset.X - firstMeasure.Offset.X, TextElement.Font.LineHeight);
                             SelectElement.Render();
                         } else {
-                            //multiple lines
+                            //first line
+                            SelectElement.Position.X = position.X + firstMeasure.Offset.X;
+                            SelectElement.Position.Y = position.Y + firstMeasure.Offset.Y;
+                            SelectElement.ScaleToFit(firstMeasure.Line.RightOffset - firstMeasure.Offset.X, TextElement.Font.LineHeight);
+                            SelectElement.Render();
+                            //lines between first and last (if any)
+                            var lineIndex = firstMeasure.Line.Index + 1;
+                            while (lineIndex < secondMeasure.Line.Index) {
+                                var line = TextElement.Measurements.Lines[lineIndex];
+                                SelectElement.Position.X = position.X + line.LeftOffset;
+                                SelectElement.Position.Y = position.Y - TextElement.Measurements.Height * TextElement.Justify.Y + line.Index * TextElement.Font.LineHeight;
+                                SelectElement.ScaleToFit(line.RightOffset - line.LeftOffset, TextElement.Font.LineHeight);
+                                SelectElement.Render();
+                            }
+                            //last line
+                            SelectElement.Position.X = position.X + secondMeasure.Line.LeftOffset;
+                            SelectElement.Position.Y = position.Y + secondMeasure.Offset.Y;
+                            SelectElement.ScaleToFit(secondMeasure.Offset.X - secondMeasure.Line.LeftOffset, TextElement.Font.LineHeight);
+                            SelectElement.Render();
                         }
                     }
                 }
             }
             if (Typing) {
                 var origColor = Caret.TextureElement.Color;
-                if (Monocle.Engine.Scene.BetweenInterval(Caret.BlinkInterval)) {
+                if (Engine.Scene.BetweenInterval(Caret.BlinkInterval)) {
                     Caret.TextureElement.Color *= Caret.BlinkAlpha;
                 }
                 Caret.TextureElement.Position.X += Caret.Offset.X;
