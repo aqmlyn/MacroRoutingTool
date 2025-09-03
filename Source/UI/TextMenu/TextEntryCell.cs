@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Input;
 using Monocle;
 
 namespace Celeste.Mod.MacroRoutingTool.UI;
@@ -8,9 +10,15 @@ namespace Celeste.Mod.MacroRoutingTool.UI;
 partial class TableMenu {
     /// <summary>
     /// A table cell in which users can input text. Loosely based on
-    /// <seealso href="https://github.com/EverestAPI/Everest/blob/8c5add9e2c4b5478c9b9e559b9af080b24288863/Celeste.Mod.mm/Mod/UI/TextMenuExt.cs#L1481">Everest's TextBox class</seealso>.
+    /// <seealso href="https://github.com/EverestAPI/Everest/blob/8c5add9e2c4b5478c9b9e559b9af080b24288863/Celeste.Mod.mm/Mod/UI/TextMenuExt.cs#L1481">Everest's TextBox class</seealso>,
+    /// with many additional features such as a caret and clipboard access.
     /// </summary>
     public class TextEntry : CellItem {
+        /// <summary>
+        /// List of keys that, when held, cause other key presses to be interpreted as sending commands rather than characters.
+        /// </summary>
+        public static List<Keys> ControlKeys = [Keys.LeftControl, Keys.LeftAlt, Keys.LeftWindows, Keys.RightControl, Keys.RightAlt, Keys.RightWindows];
+
         /// <summary>
         /// Whether this text input is currently being typed in.
         /// </summary>
@@ -43,14 +51,30 @@ partial class TableMenu {
         /// </summary>
         public class InputEventInstructions {
             /// <summary>
-            /// Whether to stop checking for input matches after this event subscriber returns.
+            /// Whether to stop checking for input matches after this function returns.
             /// </summary>
             public bool Break = false;
+
+            /// <summary>
+            /// Whether to play a sound indicating invalid input.
+            /// </summary>
+            public bool Invalid = false;
         }
 
         /// <param name="textEntry">The <see cref="TextEntry"/> object of which this event is running.</param>
+        /// <param name="receivedChar">The character received from the system keyboard input.</param>
+        /// <returns>Whether to perform the action associated with this check.</returns>
+        public delegate bool CharEventCheck(TextEntry textEntry, char receivedChar);
+        /// <param name="textEntry">The <see cref="TextEntry"/> object of which this event is running.</param>
+        /// <returns>Whether to perform the action associated with this check.</returns>
+        public delegate bool InputEventCheck(TextEntry textEntry);
+        /// <param name="textEntry">The <see cref="TextEntry"/> object of which this event is running.</param>
         /// <param name="evInstr"><inheritdoc cref="InputEventInstructions"/></param>
         public delegate void InputEventSubscriber(TextEntry textEntry, InputEventInstructions evInstr);
+        /// <param name="textEntry">The <see cref="TextEntry"/> object of which this event is running.</param>
+        /// <param name="receivedChar">The character received from the system keyboard input.</param>
+        /// <param name="evInstr"><inheritdoc cref="InputEventInstructions"/></param>
+        public delegate void CharEventSubscriber(TextEntry textEntry, char receivedChar, InputEventInstructions evInstr);
 
         /// <summary>
         /// Each key is a function that receives the detected character and returns a Boolean.<br/>
@@ -58,14 +82,18 @@ partial class TableMenu {
         /// If a value function performs an action (rather than just checking if it should perform an action),
         /// it usually should set <see cref="InputEventInstructions.Break"/> to true.
         /// </summary>
-        public Dictionary<Func<char, bool>, Action<TextEntry, char, InputEventInstructions>> OnReceiveChar = [];
+        public Dictionary<CharEventCheck, CharEventSubscriber> OnReceiveChar = new(){
+            {DefaultInsertCheck, InsertAtCaret}
+        };
         /// <summary>
         /// Each key is a function that returns a Boolean, intended to check whether the user has pressed certain key(s).
         /// Each value is a function to be called whenever the key returns true.<br/>
         /// If a value function performs an action (rather than just checking if it should perform an action) based on
         /// a non-modifier key, it usually should set <see cref="InputEventInstructions.Break"/> to true.
         /// </summary>
-        public Dictionary<Func<bool>, InputEventSubscriber> OnReceiveInput = [];
+        public Dictionary<InputEventCheck, InputEventSubscriber> OnReceiveInput = new(){
+
+        };
 
         /// <summary>
         /// A <see cref="TextEntry"/>'s inner margins, which reserve a minimum space between the element's edges and its text's edges.
@@ -187,42 +215,98 @@ partial class TableMenu {
         }
 
         /// <summary>
+        /// Consume all <see cref="VirtualButton"/> inputs in <see cref="MInput.VirtualInputs"/>.<br/>
+        /// Performed when an event action sets its <see cref="InputEventInstructions.Break"/> to true in order to
+        /// prevent globally active input checks, such as CelesteTAS Start/Stop TAS, from conflicting with typing.
+        /// </summary>
+        public static void ConsumeGameInput() {
+            foreach (var input in MInput.VirtualInputs) {
+                if (input is VirtualButton button) {
+                    button.ConsumePress();
+                }
+            }
+        }
+
+        /// <summary>
+        /// Notify the user that their input was not processed as they likely intended.
+        /// </summary>
+        public static void NotifyInvalid() {
+            //TODO also give visual feedback
+            Audio.Play(SFX.ui_main_button_invalid);
+        }
+
+        /// <summary>
         /// Default check for whether a given character is able to be inserted into the text.
         /// </summary>
-        public bool DefaultInsertCheck(char ch) => TextElement.Font.Characters.ContainsKey(ch);
+        public static bool DefaultInsertCheck(TextEntry textEntry, char ch) {
+            ArgumentNullException.ThrowIfNull(textEntry);
+            return textEntry.TextElement.Font.Characters.ContainsKey(ch) && !ControlKeys.Any(MInput.Keyboard.Check);
+        }
 
         /// <summary>
         /// If any text is selected, replace it with the given character. Otherwise, insert the given character at the caret's current position.
         /// </summary>
-        public void InsertAtCaret(char ch) {
+        public static void InsertAtCaret(TextEntry textEntry, char ch, InputEventInstructions evInstr) {
+            ArgumentNullException.ThrowIfNull(textEntry);
             int insertStart;
             int insertEnd;
-            if (Caret.Anchor < Caret.Focus) {
-                insertStart = Caret.Anchor;
-                insertEnd = Caret.Focus;
+            if (textEntry.Caret.Anchor < textEntry.Caret.Focus) {
+                insertStart = textEntry.Caret.Anchor;
+                insertEnd = textEntry.Caret.Focus;
             } else {
-                insertStart = Caret.Focus;
-                insertEnd = Caret.Anchor;
+                insertStart = textEntry.Caret.Focus;
+                insertEnd = textEntry.Caret.Anchor;
             }
-            var existingText = TextElement.Text;
-            TextElement.Text = existingText[..insertStart] + ch + existingText[insertEnd..];
+            var existingText = textEntry.TextElement.Text;
+            var newText = existingText[..insertStart] + ch;
+            if (insertEnd < existingText.Length - 1) { newText += existingText[insertEnd..]; }
+            textEntry.TextElement.Text = newText;
+        }
+
+        public static bool CutCheck(TextEntry _) => (MInput.Keyboard.Check(Keys.LeftControl) || MInput.Keyboard.Check(Keys.RightControl)) && MInput.Keyboard.Pressed(Keys.X);
+        public static bool CopyCheck(TextEntry _) => (MInput.Keyboard.Check(Keys.LeftControl) || MInput.Keyboard.Check(Keys.RightControl)) && MInput.Keyboard.Pressed(Keys.C);
+        public static bool PasteCheck(TextEntry _) => (MInput.Keyboard.Check(Keys.LeftControl) || MInput.Keyboard.Check(Keys.RightControl)) && MInput.Keyboard.Pressed(Keys.V);
+        public static bool SelectAllCheck(TextEntry _) => (MInput.Keyboard.Check(Keys.LeftControl) || MInput.Keyboard.Check(Keys.RightControl)) && MInput.Keyboard.Pressed(Keys.A);
+
+        public static void Cut(TextEntry textEntry, InputEventInstructions evInstr) {
+
+        }
+        public static void Copy(TextEntry textEntry, InputEventInstructions evInstr) {
+
+        }
+        public static void Paste(TextEntry textEntry, InputEventInstructions evInstr) {
+
+        }
+        public static void SelectAll(TextEntry textEntry, InputEventInstructions evInstr) {
+
+        }
+
+        public override void ConfirmPressed() {
+            base.ConfirmPressed();
+            GainFocus();
         }
 
         public override void Update() {
             foreach (var inputListener in OnReceiveInput) {
-                if (inputListener.Key?.Invoke() ?? false) {
+                if (inputListener.Key?.Invoke(this) ?? false) {
                     var evInstr = new InputEventInstructions();
                     inputListener.Value?.Invoke(this, evInstr);
-                    if (evInstr.Break) { break; }
+                    if (evInstr.Break) {
+                        ConsumeGameInput();
+                        if (evInstr.Invalid) { NotifyInvalid(); }
+                        return;
+                    }
                 }
             }
 
             while (TextInputsThisFrame.TryDequeue(out var ch)) {
                 foreach (var charListener in OnReceiveChar) {
-                    if (charListener.Key?.Invoke(ch) ?? false) {
+                    if (charListener.Key?.Invoke(this, ch) ?? false) {
                         var evInstr = new InputEventInstructions();
                         charListener.Value?.Invoke(this, ch, evInstr);
                         if (evInstr.Break) {
+                            ConsumeGameInput();
+                            if (evInstr.Invalid) { NotifyInvalid(); }
                             TextInputsThisFrame.Clear();
                             return;
                         }
@@ -242,6 +326,7 @@ partial class TableMenu {
             var textWidth = width - InnerMargins.Left - InnerMargins.Right;
             var textHeight = height - InnerMargins.Top - InnerMargins.Bottom;
 
+            //draw back element
             BackElement.Position.X = position.X;
             BackElement.Position.Y = position.Y;
             BackElement.Justify.X = JustifyX ?? BackElement.Justify.X;
@@ -255,6 +340,7 @@ partial class TableMenu {
             BackElement.Render();
             BackElement.BorderThickness = ogBackBorderThickness;
             if (string.IsNullOrEmpty(TextElement.Text)) {
+                //draw placeholder text when empty
                 PlaceholderElement.Position.X = position.X;
                 PlaceholderElement.Position.Y = position.Y;
                 PlaceholderElement.Justify.X = JustifyX ?? PlaceholderElement.Justify.X;
@@ -278,7 +364,7 @@ partial class TableMenu {
                     var focusMeasure = TextElement.MeasureChar(Caret.Focus);
                     Caret.Offset = focusMeasure.Offset;
                     if (Caret.Anchor != Caret.Focus) {
-                        //selected text
+                        //draw selected text indicator
                         SelectElement.Justify.Y = JustifyY ?? TextElement.Justify.Y;
                         var anchorMeasure = TextElement.MeasureChar(Caret.Anchor);
                         TextElement.CharMeasurements firstMeasure;
@@ -321,7 +407,8 @@ partial class TableMenu {
                 }
             }
             if (Typing) {
-                var origColor = Caret.TextureElement.Color;
+                //draw caret while typing
+                var origCaretColor = Caret.TextureElement.Color;
                 if (Engine.Scene.BetweenInterval(Caret.BlinkInterval)) {
                     Caret.TextureElement.Color *= Caret.BlinkAlpha;
                 }
@@ -330,7 +417,7 @@ partial class TableMenu {
                 Caret.TextureElement.Justify.Y = JustifyY ?? TextElement.Justify.Y;
                 Caret.TextureElement.ScaleYToFit(textHeight);
                 Caret.TextureElement.Render();
-                Caret.TextureElement.Color = origColor;
+                Caret.TextureElement.Color = origCaretColor;
             }
         }
     }

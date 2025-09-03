@@ -1,4 +1,6 @@
 ﻿using System;
+using Microsoft.Xna.Framework;
+using Monocle;
 
 namespace Celeste.Mod.MacroRoutingTool;
 
@@ -55,4 +57,12 @@ public class MRT : EverestModule {
         public const string Debug = "Debug";
         public const string Utils = "Utils";
     }
+
+    public static void ConsoleMessage(object msg, Color? color = null) {
+        Engine.Commands.Open = true;
+        Engine.Commands.Log(msg, color ?? Color.White);
+    }
+
+    public static void ConsoleWarn(object msg) => ConsoleMessage(msg, new(255, 204, 0));
+    public static void ConsoleError(object msg) => ConsoleMessage(msg, new(255, 102, 102));
 }
