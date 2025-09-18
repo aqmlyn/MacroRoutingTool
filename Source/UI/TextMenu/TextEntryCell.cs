@@ -56,9 +56,15 @@ partial class TableMenu {
             public bool Break = false;
 
             /// <summary>
-            /// Whether to play a sound indicating invalid input.
+            /// Whether this input is invalid in a way that doesn't demand immediate attention.
             /// </summary>
-            public bool Invalid = false;
+            public bool InvalidMinor = false;
+
+            /// <summary>
+            /// Whether this input is invalid in a way that demands immediate attention.
+            /// <see cref="NotifyInvalid"/> will be called to get the user's attention.
+            /// </summary>
+            public bool InvalidMajor = false;
         }
 
         /// <param name="textEntry">The <see cref="TextEntry"/> object of which this event is running.</param>
@@ -83,17 +89,34 @@ partial class TableMenu {
         /// it usually should set <see cref="InputEventInstructions.Break"/> to true.
         /// </summary>
         public Dictionary<CharEventCheck, CharEventSubscriber> OnReceiveChar = new(){
-            {DefaultInsertCheck, InsertAtCaret}
+            {EscapeCheck, Exit},
+            {CutCheck, Cut},
+            {CopyCheck, Copy},
+            {PasteCheck, Paste},
+            {SelectAllCheck, SelectAll},
+            {UpdateCaretMovementOptionCheck, UpdateCaretMovementOptions},
+            {MoveCaretUpCheck, MoveCaretUp},
+            {MoveCaretDownCheck, MoveCaretDown},
+            {MoveCaretLeftCheck, MoveCaretLeft},
+            {MoveCaretRightCheck, MoveCaretRight},
+            {MoveCaretLineStartCheck, MoveCaretLineStart},
+            {MoveCaretLineEndCheck, MoveCaretLineEnd},
+            {BackspaceCheck, Backspace},
+            {DeleteCheck, Delete},
+            {DefaultInsertCheck, TypeAtCaret}
         };
-        /// <summary>
-        /// Each key is a function that returns a Boolean, intended to check whether the user has pressed certain key(s).
-        /// Each value is a function to be called whenever the key returns true.<br/>
-        /// If a value function performs an action (rather than just checking if it should perform an action) based on
-        /// a non-modifier key, it usually should set <see cref="InputEventInstructions.Break"/> to true.
-        /// </summary>
-        public Dictionary<InputEventCheck, InputEventSubscriber> OnReceiveInput = new(){
 
-        };
+        /// <summary>
+        /// Character inputs received this frame. Recorded by <see cref="RecordCharInput"/> (which is subscribed to
+        /// <see cref="TextInput.OnInput"/> while <see cref="Typing"/>) and processed by <see cref="Update"/>.
+        /// </summary>
+        public Queue<char> CharsReceivedThisFrame = [];
+
+        /// <summary>
+        /// The function used by this <see cref="TextEntry"/> to determine whether the character at a given index
+        /// is part of the separation between two words.
+        /// </summary>
+        public Func<TextEntry, int, bool> WordSeparationCheck = DefaultWordSeparationCheck;
 
         /// <summary>
         /// A <see cref="TextEntry"/>'s inner margins, which reserve a minimum space between the element's edges and its text's edges.
@@ -129,65 +152,161 @@ partial class TableMenu {
         public bool AutoHoverBorder = true;
 
         /// <summary>
-        /// A <see cref="TextEntry"/>'s <seealso href="https://en.wikipedia.org/wiki/Caret_navigation">caret</seealso>. 
+        /// Default color of the caret in every text entry cell.
         /// </summary>
-        public class TextCaret {
-            /// <summary>
-            /// Default color of the caret in every text entry cell.
-            /// </summary>
-            public static Color DefaultColor = HighlightColorB * 0.9f;
+        public static Color CaretDefaultColor = HighlightColorB * 0.9f;
 
-            /// <summary>
-            /// The element that contains and renders this caret's texture. 
-            /// </summary>
-            public TextureElement TextureElement = new() { Texture = UIHelpers.Square, Color = DefaultColor, Justify = new(0.5f, 0f), Scale = new(3f / UIHelpers.Square.Width, 1f), BorderThickness = 1f };
+        /// <summary>
+        /// The element that contains and renders this caret's texture. 
+        /// </summary>
+        public TextureElement CaretElement = new() { Texture = UIHelpers.Square, Color = CaretDefaultColor, Justify = new(0.5f, 0f), Scale = new(3f / UIHelpers.Square.Width, 1f), BorderThickness = 1f };
 
-            /// <summary>
-            /// Time between each change in this caret's visibility.
-            /// </summary>
-            public float BlinkInterval = 0.6f;
+        /// <summary>
+        /// Time between each change in this caret's visibility.
+        /// </summary>
+        public float CaretBlinkInterval = 0.6f;
 
-            /// <summary>
-            /// Opacity of this caret during blinks. 0 is invisible, 1 is opaque.
-            /// </summary>
-            public float BlinkAlpha = 0.4f;
+        /// <summary>
+        /// Opacity of this caret during blinks. 0 is invisible, 1 is opaque.
+        /// </summary>
+        public float CaretBlinkAlpha = 0.4f;
 
-            /// <summary>
-            /// Index in the original text of the position at which this range was initiated.
-            /// </summary>
-            public int Anchor = 0;
+        /// <summary>
+        /// Backing field for <see cref="CaretAnchor"/>.
+        /// </summary>
+        public int _caretAnchor = 0;
 
-            /// <summary>
-            /// Index in the original text of the caret's current position.
-            /// </summary>
-            public int Focus = 0;
-
-            /// <summary>
-            /// Offset of this caret's <see cref="TextureElement"/> position relative to the text input's <see cref="TextElement"/>'s position. 
-            /// </summary>
-            public Vector2 Offset = Vector2.Zero;
+        /// <summary>
+        /// If any text is selected, this is the index in the original text at which the selection was initiated.
+        /// Otherwise, this is equal to <see cref="Focus"/>.
+        /// </summary>
+        public int CaretAnchor {
+            get => _caretAnchor;
+            set {
+                CaretAnchorNeedsRemeasured |= _caretAnchor != value;
+                _caretAnchor = value;
+            }
         }
 
         /// <summary>
-        /// This <see cref="TextEntry"/>'s <seealso href="https://en.wikipedia.org/wiki/Caret_navigation">caret</seealso>. 
+        /// Backing field for <see cref="CaretAnchorMeasure"/>.
         /// </summary>
-        public TextCaret Caret = new();
+        public TextElement.CharMeasurements _caretAnchorOffset = null;
 
         /// <summary>
-        /// Text inputs received this frame. Recorded by <see cref="RecordTextInput"/> and processed by <see cref="Update"/>.
+        /// Offset, relative to relative to <see cref="TextElement"/>'s position, of the selection end opposite from the caret.
         /// </summary>
-        public Queue<char> TextInputsThisFrame = [];
+        public TextElement.CharMeasurements CaretAnchorMeasure {
+            get {
+                if (CaretAnchorNeedsRemeasured) { RemeasureCaretAnchor(); }
+                return _caretAnchorOffset;
+            }
+            set { _caretAnchorOffset = value; }
+        }
+
+        /// <summary>
+        /// Whether <see cref="CaretAnchorMeasure"/> needs to be remeasured before it's used in rendering.
+        /// </summary>
+        public bool CaretAnchorNeedsRemeasured = false;
+
+        /// <summary>
+        /// Backing field for <see cref="CaretFocus"/>.
+        /// </summary>
+        public int _caretFocus = 0;
+
+        /// <summary>
+        /// Index in the original text of the caret's current position.
+        /// </summary>
+        public int CaretFocus {
+            get => _caretFocus;
+            set {
+                CaretFocusNeedsRemeasured |= _caretFocus != value;
+                _caretFocus = value;
+            }
+        }
+        
+        /// <summary>
+        /// Backing field for <see cref="CaretFocusMeasure"/>.
+        /// </summary>
+        public TextElement.CharMeasurements _caretFocusOffset = null;
+
+        /// <summary>
+        /// Offset, relative to <see cref="TextElement"/>'s position, of the caret's <see cref="TextureElement"/> position. 
+        /// </summary>
+        public TextElement.CharMeasurements CaretFocusMeasure {
+            get {
+                if (CaretFocusNeedsRemeasured) { RemeasureCaretFocus(); }
+                return _caretFocusOffset;
+            }
+            set { _caretFocusOffset = value; }
+        }
+
+        /// <summary>
+        /// Whether <see cref="CaretFocusMeasure"/> needs to be remeasured before it's used in rendering.
+        /// </summary>
+        public bool CaretFocusNeedsRemeasured = false;
+
+        /// <summary>
+        /// Target horizontal offset to place <see cref="Focus"/> as close as possible to when moving it vertically.
+        /// </summary>
+        public float CaretTargetX = 0f;
+
+        /// <summary>
+        /// Remeasure <see cref="CaretAnchorMeasure"/> so that it will be drawn in the correct position when rendering.
+        /// </summary>
+        public void RemeasureCaretAnchor() {
+            CaretAnchorNeedsRemeasured = false;
+            _caretAnchorOffset = TextElement.MeasureChar(CaretAnchor);
+        }
+
+        /// <summary>
+        /// Remeasure <see cref="CaretFocusMeasure"/> so that it will be drawn in the correct position when rendering.
+        /// </summary>
+        public void RemeasureCaretFocus() {
+            CaretFocusNeedsRemeasured = false;
+            _caretFocusOffset = TextElement.MeasureChar(CaretFocus);
+        }
+
+        /// <summary>
+        /// Assign the indices <see cref="CaretAnchor"/> and <see cref="CaretFocus"/> in their current chronological order to the given out variables.
+        /// </summary>
+        /// <param name="first">The index that comes first.</param>
+        /// <param name="second">The index that comes second.</param>
+        public void OrderCaretIndices(out int first, out int second) {
+            if (CaretAnchor < CaretFocus) {
+                first = CaretAnchor;
+                second = CaretFocus;
+            } else {
+                first = CaretFocus;
+                second = CaretAnchor;
+            }
+        }
+
+        /// <summary>
+        /// Assign <see cref="CaretAnchorMeasure"/> and <see cref="CaretFocusMeasure"/> in their current chronological order to the given out variables.
+        /// </summary>
+        /// <param name="first">The measure that comes first.</param>
+        /// <param name="second">The measure that comes second.</param>
+        public void OrderCaretMeasurements(out TextElement.CharMeasurements first, out TextElement.CharMeasurements second) {
+            if (CaretAnchor < CaretFocus) {
+                first = CaretAnchorMeasure;
+                second = CaretFocusMeasure;
+            } else {
+                first = CaretFocusMeasure;
+                second = CaretAnchorMeasure;
+            }
+        }
 
         ~TextEntry() {
             if (Typing) { LoseFocus(); }
         }
 
         /// <summary>
-        /// Record the given character into <see cref="TextInputsThisFrame"/>. Characters are recorded, rather than
+        /// Record the given character into <see cref="CharsReceivedThisFrame"/>. Characters are recorded, rather than
         /// acted upon immediately, so that <see cref="Update"/> can give inputs a chance to take priority over characters.
         /// </summary>
-        public void RecordTextInput(char ch) {
-            TextInputsThisFrame.Enqueue(ch);
+        public void RecordCharInput(char ch) {
+            CharsReceivedThisFrame.Enqueue(ch);
         }
 
         /// <summary>
@@ -199,14 +318,14 @@ partial class TableMenu {
                 Container.Focused = false;
                 Container.RenderAsFocused = true;
             }
-            TextInput.OnInput += RecordTextInput;
+            TextInput.OnInput += RecordCharInput;
         }
 
         /// <summary>
         /// Called when the user finishes typing in this text entry.
         /// </summary>
         public void LoseFocus() {
-            TextInput.OnInput -= RecordTextInput;
+            TextInput.OnInput -= RecordCharInput;
             Typing = false;
             if (Container != null) {
                 Container.Focused = true;
@@ -236,6 +355,13 @@ partial class TableMenu {
         }
 
         /// <summary>
+        /// Default check for whether the character at the given index is part of the separation between two words.
+        /// </summary>
+        public static bool DefaultWordSeparationCheck(TextEntry textEntry, int index) {
+            return char.IsWhiteSpace(textEntry.TextElement.Text[index]);
+        }
+
+        /// <summary>
         /// Default check for whether a given character is able to be inserted into the text.
         /// </summary>
         public static bool DefaultInsertCheck(TextEntry textEntry, char ch) {
@@ -244,41 +370,403 @@ partial class TableMenu {
         }
 
         /// <summary>
+        /// If any text is selected, replace it with the given string. Otherwise, insert the given string at the caret's current position.
+        /// </summary>
+        public void InsertAtCaret(string str) {
+            OrderCaretIndices(out var insertStart, out var insertEnd);
+            var existingText = TextElement.Text;
+            var newText = existingText[..insertStart] + str;
+            if (insertEnd < existingText.Length) { newText += existingText[insertEnd..]; }
+            TextElement.Text = newText;
+            CaretAnchor = CaretFocus = insertStart + str.Length;
+            CaretTargetX = CaretFocusMeasure.Offset.X;
+        }
+
+        /// <summary>
         /// If any text is selected, replace it with the given character. Otherwise, insert the given character at the caret's current position.
         /// </summary>
-        public static void InsertAtCaret(TextEntry textEntry, char ch, InputEventInstructions evInstr) {
+        public void InsertAtCaret(char str) => InsertAtCaret(str.ToString());
+
+        /// <summary>
+        /// If any text is selected, replace it with the given character. Otherwise, insert the given character at the caret's current position.
+        /// </summary>
+        public static void TypeAtCaret(TextEntry textEntry, char ch, InputEventInstructions evInstr) {
+            evInstr.Break = true;
             ArgumentNullException.ThrowIfNull(textEntry);
-            int insertStart;
-            int insertEnd;
-            if (textEntry.Caret.Anchor < textEntry.Caret.Focus) {
-                insertStart = textEntry.Caret.Anchor;
-                insertEnd = textEntry.Caret.Focus;
-            } else {
-                insertStart = textEntry.Caret.Focus;
-                insertEnd = textEntry.Caret.Anchor;
+            textEntry.InsertAtCaret(ch);
+        }
+
+        /// <summary>
+        /// Default check for cutting text, which checks the keyboard shortcut Ctrl+X.
+        /// </summary>
+        public static bool CutCheck(TextEntry _, char __) => (MInput.Keyboard.Check(Keys.LeftControl) || MInput.Keyboard.Check(Keys.RightControl)) && MInput.Keyboard.Pressed(Keys.X);
+        /// <summary>
+        /// Default check for copying text, which checks the keyboard shortcut Ctrl+C.
+        /// </summary>
+        public static bool CopyCheck(TextEntry _, char __) => (MInput.Keyboard.Check(Keys.LeftControl) || MInput.Keyboard.Check(Keys.RightControl)) && MInput.Keyboard.Pressed(Keys.C);
+        /// <summary>
+        /// Default check for pasting text, which checks the keyboard shortcut Ctrl+V.
+        /// </summary>
+        public static bool PasteCheck(TextEntry _, char __) => (MInput.Keyboard.Check(Keys.LeftControl) || MInput.Keyboard.Check(Keys.RightControl)) && MInput.Keyboard.Pressed(Keys.V);
+        /// <summary>
+        /// Default check for selecting all text, which checks the keyboard shortcut Ctrl+A.
+        /// </summary>
+        public static bool SelectAllCheck(TextEntry _, char __) => (MInput.Keyboard.Check(Keys.LeftControl) || MInput.Keyboard.Check(Keys.RightControl)) && MInput.Keyboard.Pressed(Keys.A);
+
+        /// <summary>
+        /// Copy the given <see cref="TextEntry"/>'s selected text to the system clipboard, then delete that text from the <see cref="TextEntry"/>.<br/>
+        /// Copying uses <seealso href="https://github.com/EverestAPI/Everest/blob/fd05ec3e0403f0e0a425ca2e21763b09dedd3cfa/Celeste.Mod.mm/Mod/Everest/TextInput.cs#L75">Everest's TextInput.SetClipboardText</seealso>,
+        /// which currently uses <seealso href="https://wiki.libsdl.org/SDL2/FrontPage">SDL2</seealso>.
+        /// </summary>
+        public static void Cut(TextEntry textEntry, char _, InputEventInstructions evInstr) {
+            evInstr.Break = true;
+
+            Copy(textEntry, _, evInstr);
+            if (evInstr.InvalidMinor) { return; }
+            textEntry.InsertAtCaret("");
+        }
+        /// <summary>
+        /// Copy the given <see cref="TextEntry"/>'s selected text to the system clipboard.<br/>
+        /// Uses <seealso href="https://github.com/EverestAPI/Everest/blob/fd05ec3e0403f0e0a425ca2e21763b09dedd3cfa/Celeste.Mod.mm/Mod/Everest/TextInput.cs#L75">Everest's TextInput.SetClipboardText</seealso>,
+        /// which currently uses <seealso href="https://wiki.libsdl.org/SDL2/FrontPage">SDL2</seealso>.
+        /// </summary>
+        public static void Copy(TextEntry textEntry, char _, InputEventInstructions evInstr) {
+            evInstr.Break = true;
+
+            if (textEntry.CaretAnchor == textEntry.CaretFocus) {
+                evInstr.InvalidMinor = true;
+                return;
             }
-            var existingText = textEntry.TextElement.Text;
-            var newText = existingText[..insertStart] + ch;
-            if (insertEnd < existingText.Length - 1) { newText += existingText[insertEnd..]; }
-            textEntry.TextElement.Text = newText;
+
+            textEntry.OrderCaretIndices(out var selStart, out var selEnd);
+            var selText = textEntry.TextElement.Text[selStart..(selEnd - selStart)];
+            TextInput.SetClipboardText(selText);
+        }
+        /// <summary>
+        /// If the system clipboard contains text, pastes it in the given <see cref="TextEntry"/>
+        /// at its caret's current position, replacing selected text if there is any.<br/>
+        /// Uses <seealso href="https://github.com/EverestAPI/Everest/blob/fd05ec3e0403f0e0a425ca2e21763b09dedd3cfa/Celeste.Mod.mm/Mod/Everest/TextInput.cs#L74">Everest's TextInput.GetClipboardText</seealso>,
+        /// which currently uses <seealso href="https://wiki.libsdl.org/SDL2/FrontPage">SDL2</seealso>.
+        /// </summary>
+        public static void Paste(TextEntry textEntry, char _, InputEventInstructions evInstr) {
+            evInstr.Break = true;
+
+            var pasteText = TextInput.GetClipboardText();
+            if (string.IsNullOrEmpty(pasteText)) {
+                evInstr.InvalidMajor = true;
+                return;
+            }
+            textEntry.InsertAtCaret(pasteText);
+        }
+        /// <summary>
+        /// Selects all text in the given <see cref="TextEntry"/>.
+        /// </summary>
+        public static void SelectAll(TextEntry textEntry, char _, InputEventInstructions evInstr) {
+            evInstr.Break = true;
+
+            var text = textEntry.TextElement.Text;
+            if (string.IsNullOrEmpty(text)) {
+                evInstr.InvalidMajor = true;
+                return;
+            }
+            textEntry.CaretAnchor = 0;
+            textEntry.CaretFocus = text.Length;
         }
 
-        public static bool CutCheck(TextEntry _) => (MInput.Keyboard.Check(Keys.LeftControl) || MInput.Keyboard.Check(Keys.RightControl)) && MInput.Keyboard.Pressed(Keys.X);
-        public static bool CopyCheck(TextEntry _) => (MInput.Keyboard.Check(Keys.LeftControl) || MInput.Keyboard.Check(Keys.RightControl)) && MInput.Keyboard.Pressed(Keys.C);
-        public static bool PasteCheck(TextEntry _) => (MInput.Keyboard.Check(Keys.LeftControl) || MInput.Keyboard.Check(Keys.RightControl)) && MInput.Keyboard.Pressed(Keys.V);
-        public static bool SelectAllCheck(TextEntry _) => (MInput.Keyboard.Check(Keys.LeftControl) || MInput.Keyboard.Check(Keys.RightControl)) && MInput.Keyboard.Pressed(Keys.A);
-
-        public static void Cut(TextEntry textEntry, InputEventInstructions evInstr) {
-
+        /// <summary>
+        /// Moves the caret to the specified index in the current text. If <paramref name="select"/> is true, leaves the anchor where it is in order to create a selection.
+        /// </summary>
+        /// <param name="idx">Index in the current text to move the caret to.</param>
+        /// <param name="select">Whether to create a selection.</param>
+        /// <exception cref="IndexOutOfRangeException">The received index was either negative or greater than the length of the current text.</exception>
+        public void MoveCaretIndex(Index idx, bool select = false) {
+            if (!idx.IsFromEnd && idx.Value < 0) { throw new IndexOutOfRangeException($"Received negative index: {idx.Value}"); }
+            var text = TextElement.Text;
+            var idxval = idx.GetOffset(text.Length);
+            if (idxval > text.Length) { throw new IndexOutOfRangeException($"Index {idxval} (from {idx}) is greater than current length of text ({text.Length}): {text}"); }
+            CaretFocus = idxval;
+            if (!select) { CaretAnchor = idxval; }
         }
-        public static void Copy(TextEntry textEntry, InputEventInstructions evInstr) {
 
+        /// <summary>
+        /// Moves the caret to the specified index in the current text. If <paramref name="select"/> returns true, leaves the anchor where it is in order to create a selection.
+        /// </summary>
+        /// <param name="idx">Index in the current text to move the caret to.</param>
+        /// <param name="select">A function that returns whether to create a selection.</param>
+        /// <exception cref="IndexOutOfRangeException">The received index was either negative or greater than the length of the current text.</exception>
+        public void MoveCaretIndex(Index idx, Func<bool> select) => MoveCaretIndex(idx, select?.Invoke() ?? false);
+
+        /// <summary>
+        /// Returns the closest index before <see cref="CaretFocus"/> at which <see cref="WordSeparationCheck"/>
+        /// returns true, or 0 if there is no such index.
+        /// </summary>
+        public int IndexAtPreviousWord() {
+            if (CaretFocus == 0) { return 0; }
+            var idx = CaretFocus - 1;
+            while (idx > 0 && WordSeparationCheck(this, idx)) { idx--; }
+            while (idx > 0 && !WordSeparationCheck(this, idx)) { idx--; }
+            return idx;
         }
-        public static void Paste(TextEntry textEntry, InputEventInstructions evInstr) {
 
+        /// <summary>
+        /// Returns the closest index after <see cref="CaretFocus"/> at which <see cref="WordSeparationCheck"/>
+        /// returns true, or the length of the text if there is no such index.
+        /// </summary>
+        public int IndexAtNextWord() {
+            var end = TextElement.Text.Length;
+            if (CaretFocus == end) { return end; }
+            var idx = CaretFocus + 1;
+            while (idx < end && WordSeparationCheck(this, idx)) { idx++; }
+            while (idx < end && !WordSeparationCheck(this, idx)) { idx++; }
+            return idx;
         }
-        public static void SelectAll(TextEntry textEntry, InputEventInstructions evInstr) {
 
+        /// <summary>
+        /// Whether a single action that moves the caret horizontally should move by one word (true) or one character (false).
+        /// </summary>
+        public bool CaretMovementByWord = false;
+        /// <summary>
+        /// Whether a single action that moves <see cref="CaretFocus"/> should also move <see cref="CaretAnchor"/>. When those
+        /// indices are not the same (allowed by setting this to false), the text in between them is considered selected.
+        /// </summary>
+        public bool CaretMovementSelect = false;
+
+        /// <summary>
+        /// If this <see cref="TextEntry"/> uses the <see cref="UpdateCaretMovementOptions"/> action in its <see cref="OnReceiveChar"/>,
+        /// its <see cref="CaretMovementByWord"/> will be set to the return value of this function.
+        /// </summary>
+        public Func<TextEntry, char, bool> CaretMovementByWordCheck = DefaultCaretMovementByWordCheck;
+        /// <summary>
+        /// If this <see cref="TextEntry"/> uses the <see cref="UpdateCaretMovementOptions"/> action in its <see cref="OnReceiveChar"/>,
+        /// its <see cref="CaretMovementSelect"/> will be set to the return value of this function.
+        /// </summary>
+        public Func<TextEntry, char, bool> CaretMovementSelectCheck = DefaultCaretMovementSelectCheck;
+
+        /// <summary>
+        /// Default check for enabling <see cref="CaretMovementByWord"/>, which checks for either Control key.
+        /// </summary>
+        public static bool DefaultCaretMovementByWordCheck(TextEntry _, char __) => MInput.Keyboard.Pressed(Keys.LeftControl) || MInput.Keyboard.Pressed(Keys.RightControl);
+        /// <summary>
+        /// Default check for enabling <see cref="CaretMovementSelect"/>, which checks for either Shift key.
+        /// </summary>
+        public static bool DefaultCaretMovementSelectCheck(TextEntry _, char __) => MInput.Keyboard.Pressed(Keys.LeftShift) || MInput.Keyboard.Pressed(Keys.RightShift);
+
+        /// <summary>
+        /// Default check associated with <see cref="UpdateCaretMovementOptions"/>, which always returns true,
+        /// meaning that action will be called each frame.
+        /// </summary>
+        public static bool UpdateCaretMovementOptionCheck(TextEntry _, char __) => true;
+        /// <summary>
+        /// Calls <see cref="CaretMovementByWordCheck"/> and <see cref="CaretMovementSelectCheck"/> and updates
+        /// <see cref="CaretMovementByWord"/> and <see cref="CaretMovementSelect"/> accordingly.
+        /// </summary>
+        public static void UpdateCaretMovementOptions(TextEntry textEntry, char ch, InputEventInstructions _) {
+            textEntry.CaretMovementByWord = textEntry.CaretMovementByWordCheck?.Invoke(textEntry, ch) ?? false;
+            textEntry.CaretMovementSelect = textEntry.CaretMovementSelectCheck?.Invoke(textEntry, ch) ?? false;
+        }
+
+        //TODO MoveCaret*Check: check for ANSI escape sequences
+        /// <summary>
+        /// Default check for moving the caret left, which checks the left arrow key.
+        /// </summary>
+        public static bool MoveCaretLeftCheck(TextEntry _, char __) => MInput.Keyboard.Pressed(Keys.Left);
+        /// <summary>
+        /// Default check for moving the caret right, which checks the right arrow key.
+        /// </summary>
+        public static bool MoveCaretRightCheck(TextEntry _, char __) => MInput.Keyboard.Pressed(Keys.Right);
+        /// <summary>
+        /// Default check for moving the caret up, which checks the up arrow key.
+        /// </summary>
+        public static bool MoveCaretUpCheck(TextEntry _, char __) => MInput.Keyboard.Pressed(Keys.Up);
+        /// <summary>
+        /// Default check for moving the caret down, which checks the down arrow key.
+        /// </summary>
+        public static bool MoveCaretDownCheck(TextEntry _, char __) => MInput.Keyboard.Pressed(Keys.Down);
+        /// <summary>
+        /// Default check for moving the caret to the start of the current line, which checks the Home key.
+        /// </summary>
+        public static bool MoveCaretLineStartCheck(TextEntry _, char __) => MInput.Keyboard.Pressed(Keys.Home);
+        /// <summary>
+        /// Default check for moving the caret to the end of the current line, which checks the End key.
+        /// </summary>
+        public static bool MoveCaretLineEndCheck(TextEntry _, char __) => MInput.Keyboard.Pressed(Keys.End);
+        /// <summary>
+        /// Default action associated with the left arrow key, which:
+        /// <list>
+        /// <item>If Control is held, moves the caret to the left by a full word, otherwise by a single character.</item>
+        /// <item>If Shift is held, leaves <see cref="CaretAnchor"/> where it is to create or continue a selection, otherwise brings the anchor with the focus.</item>
+        /// </list>
+        /// </summary>
+        public static void MoveCaretLeft(TextEntry textEntry, char _, InputEventInstructions evInstr) {
+            evInstr.Break = true;
+            if (textEntry.CaretFocus == 0) {
+                evInstr.InvalidMinor = true;
+                return;
+            }
+            int idx;
+            if (textEntry.CaretMovementByWord) {
+                idx = textEntry.IndexAtPreviousWord();
+            } else {
+                idx = textEntry.CaretFocus - 1;
+            }
+            textEntry.MoveCaretIndex(idx, textEntry.CaretMovementSelect);
+            textEntry.CaretTargetX = textEntry.CaretFocusMeasure.Offset.X;
+        }
+        /// <summary>
+        /// Default action associated with the right arrow key, which:
+        /// <list>
+        /// <item>If Control is held, moves the caret to the right by a full word, otherwise by a single character.</item>
+        /// <item>If Shift is held, leaves <see cref="CaretAnchor"/> where it is to create or continue a selection, otherwise brings the anchor with the focus.</item>
+        /// </list>
+        /// </summary>
+        public static void MoveCaretRight(TextEntry textEntry, char _, InputEventInstructions evInstr) {
+            evInstr.Break = true;
+            var end = textEntry.TextElement.Text.Length;
+            if (textEntry.CaretFocus == end) {
+                evInstr.InvalidMinor = true;
+                return;
+            }
+            int idx;
+            if (textEntry.CaretMovementByWord) {
+                idx = textEntry.IndexAtNextWord();
+            } else {
+                idx = textEntry.CaretFocus + 1;
+            }
+            textEntry.MoveCaretIndex(idx, textEntry.CaretMovementSelect);
+            textEntry.CaretTargetX = textEntry.CaretFocusMeasure.Offset.X;
+        }
+        /// <summary>
+        /// Default action associated with the up arrow key, which:
+        /// <list>
+        /// <item>Moves the caret up one line.</item>
+        /// <item>If Shift is held, leaves <see cref="CaretAnchor"/> where it is to create or continue a selection, otherwise brings the anchor with the focus.</item>
+        /// </list>
+        /// </summary>
+        public static void MoveCaretUp(TextEntry textEntry, char _, InputEventInstructions evInstr) {
+            evInstr.Break = true;
+            var line = textEntry.TextElement.Measurements.Lines.FindIndex(line => line.LastCharIndex >= textEntry.CaretFocus);
+            if (line == 0) {
+                evInstr.InvalidMinor = true;
+                return;
+            }
+            textEntry.TextElement.ClosestSpacingX(line - 1, textEntry.CaretTargetX, out int idx, out var _);
+            textEntry.MoveCaretIndex(idx, textEntry.CaretMovementSelect);
+        }
+        /// <summary>
+        /// Default action associated with the down arrow key, which:
+        /// <list>
+        /// <item>Moves the caret down one line.</item>
+        /// <item>If Shift is held, leaves <see cref="CaretAnchor"/> where it is to create or continue a selection, otherwise brings the anchor with the focus.</item>
+        /// </list>
+        /// </summary>
+        public static void MoveCaretDown(TextEntry textEntry, char _, InputEventInstructions evInstr) {
+            evInstr.Break = true;
+            var line = textEntry.TextElement.Measurements.Lines.FindIndex(line => line.LastCharIndex >= textEntry.CaretFocus);
+            if (line == textEntry.TextElement.Measurements.Lines.Count) {
+                evInstr.InvalidMinor = true;
+                return;
+            }
+            textEntry.TextElement.ClosestSpacingX(line + 1, textEntry.CaretTargetX, out int idx, out var _);
+            textEntry.MoveCaretIndex(idx, textEntry.CaretMovementSelect);
+        }
+        /// <summary>
+        /// Default action associated with the Home key, which:
+        /// <list>
+        /// <item>Moves the caret to the start of the line.</item>
+        /// <item>If Shift is held, leaves <see cref="CaretAnchor"/> where it is to create or continue a selection, otherwise brings the anchor with the focus.</item>
+        /// </list>
+        /// </summary>
+        public static void MoveCaretLineStart(TextEntry textEntry, char _, InputEventInstructions evInstr) {
+            evInstr.Break = true;
+            var line = textEntry.TextElement.Measurements.Lines.First(line => line.LastCharIndex >= textEntry.CaretFocus);
+            textEntry.MoveCaretIndex(line.FirstCharIndex, textEntry.CaretMovementSelect);
+            textEntry.CaretTargetX = textEntry.CaretFocusMeasure.Offset.X;
+        }
+        /// <summary>
+        /// Default action associated with the End key, which:
+        /// <list>
+        /// <item>Moves the caret to the end of the line.</item>
+        /// <item>If Shift is held, leaves <see cref="CaretAnchor"/> where it is to create or continue a selection, otherwise brings the anchor with the focus.</item>
+        /// </list>
+        /// </summary>
+        public static void MoveCaretLineEnd(TextEntry textEntry, char _, InputEventInstructions evInstr) {
+            evInstr.Break = true;
+            var line = textEntry.TextElement.Measurements.Lines.First(line => line.LastCharIndex >= textEntry.CaretFocus);
+            textEntry.MoveCaretIndex(line.LastCharIndex + 1, textEntry.CaretMovementSelect);
+            textEntry.CaretTargetX = textEntry.CaretFocusMeasure.Offset.X;
+        }
+
+        /// <summary>
+        /// Default check for the Backspace key.
+        /// </summary>
+        public static bool BackspaceCheck(TextEntry _, char ch) => ch == '\b';
+        //TODO the delete key does NOT send the delete character, it sends an ANSI escape sequence -- check for that instead of scancode
+        /// <summary>
+        /// Default check for the Delete key.
+        /// </summary>
+        public static bool DeleteCheck(TextEntry _, char __) => MInput.Keyboard.Pressed(Keys.Delete);
+        /// <summary>
+        /// Default action associated with the Backspace key, which:
+        /// <list>
+        /// <item>If Control is held, deletes a full word before the caret, otherwise deletes a single character.</item>
+        /// </list>
+        /// </summary>
+        public static void Backspace(TextEntry textEntry, char _, InputEventInstructions evInstr) {
+            evInstr.Break = true;
+            if (textEntry.CaretAnchor == 0 && textEntry.CaretFocus == 0) {
+                evInstr.InvalidMinor = true;
+                return;
+            }
+            if (textEntry.CaretAnchor == textEntry.CaretFocus) {
+                if (textEntry.CaretMovementByWord) {
+                    textEntry.CaretAnchor = textEntry.IndexAtPreviousWord();
+                    textEntry.InsertAtCaret("");
+                    textEntry.CaretFocus = textEntry.CaretAnchor;
+                } else {
+                    textEntry.CaretAnchor = textEntry.CaretFocus--;
+                    textEntry.TextElement.Text = textEntry.TextElement.Text.Remove(textEntry.CaretAnchor, 1);
+                }
+            } else {
+                textEntry.InsertAtCaret("");
+            }
+        }
+        /// <summary>
+        /// Default action associated with the Delete key, which:
+        /// <list>
+        /// <item>If Control is held, deletes a full word after the caret, otherwise deletes a single character.</item>
+        /// </list>
+        /// </summary>
+        public static void Delete(TextEntry textEntry, char _, InputEventInstructions evInstr) {
+            evInstr.Break = true;
+            var text = textEntry.TextElement.Text;
+            var end = text.Length;
+            if (textEntry.CaretAnchor == end && textEntry.CaretFocus == end) {
+                evInstr.InvalidMinor = true;
+                return;
+            }
+            if (textEntry.CaretAnchor == textEntry.CaretFocus) {
+                if (textEntry.CaretMovementByWord) {
+                    textEntry.CaretAnchor = textEntry.IndexAtNextWord();
+                    textEntry.InsertAtCaret("");
+                    textEntry.CaretFocus = textEntry.CaretAnchor;
+                } else {
+                    textEntry.TextElement.Text = textEntry.TextElement.Text.Remove(textEntry.CaretAnchor, 1);
+                }
+            } else {
+                textEntry.InsertAtCaret("");
+            }
+        }
+
+        /// <summary>
+        /// Default check for the Escape key.
+        /// </summary>
+        public static bool EscapeCheck(TextEntry _, char ch) => ch == '\e';
+        /// <summary>
+        /// Release focus from the <see cref="TextEntry"/>.
+        /// </summary>
+        public static void Exit(TextEntry textEntry, char _, InputEventInstructions evInstr) {
+            evInstr.Break = true;
+            textEntry.LoseFocus();
         }
 
         public override void ConfirmPressed() {
@@ -287,27 +775,15 @@ partial class TableMenu {
         }
 
         public override void Update() {
-            foreach (var inputListener in OnReceiveInput) {
-                if (inputListener.Key?.Invoke(this) ?? false) {
-                    var evInstr = new InputEventInstructions();
-                    inputListener.Value?.Invoke(this, evInstr);
-                    if (evInstr.Break) {
-                        ConsumeGameInput();
-                        if (evInstr.Invalid) { NotifyInvalid(); }
-                        return;
-                    }
-                }
-            }
-
-            while (TextInputsThisFrame.TryDequeue(out var ch)) {
+            while (CharsReceivedThisFrame.TryDequeue(out var ch)) {
                 foreach (var charListener in OnReceiveChar) {
                     if (charListener.Key?.Invoke(this, ch) ?? false) {
                         var evInstr = new InputEventInstructions();
                         charListener.Value?.Invoke(this, ch, evInstr);
                         if (evInstr.Break) {
                             ConsumeGameInput();
-                            if (evInstr.Invalid) { NotifyInvalid(); }
-                            TextInputsThisFrame.Clear();
+                            if (evInstr.InvalidMajor) { NotifyInvalid(); }
+                            CharsReceivedThisFrame.Clear();
                             return;
                         }
                     }
@@ -349,8 +825,8 @@ partial class TableMenu {
                 PlaceholderElement.MaxHeight = textHeight;
                 PlaceholderElement.Render();
                 if (Typing) {
-                    Caret.TextureElement.Position.X = 0f;
-                    Caret.TextureElement.Position.Y = TextElement.Font.LineHeight * (JustifyY ?? TextElement.Justify.Y);
+                    CaretElement.Position.X = 0f;
+                    CaretElement.Position.Y = TextElement.Font.LineHeight * (JustifyY ?? TextElement.Justify.Y);
                 }
             } else {
                 TextElement.Position.X = position.X;
@@ -361,21 +837,10 @@ partial class TableMenu {
                 TextElement.MaxHeight = textHeight;
                 TextElement.Render();
                 if (Typing) {
-                    var focusMeasure = TextElement.MeasureChar(Caret.Focus);
-                    Caret.Offset = focusMeasure.Offset;
-                    if (Caret.Anchor != Caret.Focus) {
+                    if (CaretAnchor != CaretFocus) {
                         //draw selected text indicator
                         SelectElement.Justify.Y = JustifyY ?? TextElement.Justify.Y;
-                        var anchorMeasure = TextElement.MeasureChar(Caret.Anchor);
-                        TextElement.CharMeasurements firstMeasure;
-                        TextElement.CharMeasurements secondMeasure;
-                        if (anchorMeasure.Index < focusMeasure.Index) {
-                            firstMeasure = anchorMeasure;
-                            secondMeasure = focusMeasure;
-                        } else {
-                            firstMeasure = focusMeasure;
-                            secondMeasure = anchorMeasure;
-                        }
+                        OrderCaretMeasurements(out var firstMeasure, out var secondMeasure);
                         if (firstMeasure.Line == secondMeasure.Line) {
                             //all on one line
                             SelectElement.Position.X = position.X + firstMeasure.Offset.X;
@@ -405,19 +870,17 @@ partial class TableMenu {
                         }
                     }
                 }
-            }
-            if (Typing) {
                 //draw caret while typing
-                var origCaretColor = Caret.TextureElement.Color;
-                if (Engine.Scene.BetweenInterval(Caret.BlinkInterval)) {
-                    Caret.TextureElement.Color *= Caret.BlinkAlpha;
+                var origCaretColor = CaretElement.Color;
+                if (Engine.Scene.BetweenInterval(CaretBlinkInterval)) {
+                    CaretElement.Color *= CaretBlinkAlpha;
                 }
-                Caret.TextureElement.Position.X += Caret.Offset.X;
-                Caret.TextureElement.Position.Y += Caret.Offset.Y;
-                Caret.TextureElement.Justify.Y = JustifyY ?? TextElement.Justify.Y;
-                Caret.TextureElement.ScaleYToFit(textHeight);
-                Caret.TextureElement.Render();
-                Caret.TextureElement.Color = origCaretColor;
+                CaretElement.Position.X = position.X + CaretFocusMeasure.Offset.X;
+                CaretElement.Position.Y = position.Y + CaretFocusMeasure.Offset.Y;
+                CaretElement.Justify.Y = JustifyY ?? TextElement.Justify.Y;
+                CaretElement.ScaleYToFit(textHeight);
+                CaretElement.Render();
+                CaretElement.Color = origCaretColor;
             }
         }
     }

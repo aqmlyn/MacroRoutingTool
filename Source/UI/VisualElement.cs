@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
@@ -472,6 +473,89 @@ public class TextElement : VisualElement {
     }
 
     /// <summary>
+    /// Finds the horizontal center of the spacing between two letters which is closest to the given horizontal position on the given line.
+    /// </summary>
+    /// <param name="lineIndex">Index (0-indexed) of the desired line in <see cref="Measurements"/>' <see cref="Lines"/>.</param>
+    /// <param name="targetXOffset">Target horizontal offset <inheritdoc cref="XMLDoc.Unit_PxAtTargetRes"/>.</param>
+    /// <param name="index">If the closest space is to the right of the last character, this will be one more than the line's <see cref="Measurement.Line.LastCharIndex"/>.
+    /// Otherwise, this will be the index of the character of which this space is to the left.</param>
+    /// <param name="closestXOffset">Horizontal center of the spacing between two letters which is closest to the given horizontal position on the given line.</param>
+    /// <exception cref="IndexOutOfRangeException">The given index was out of range of the <see cref="Measurements"/>' <see cref="Lines"/> list.</exception>
+    /// <exception cref="UnreachableException">The line's RightOffset and the actual right edge of its last character don't match, indicating a mistake in <see cref="Measure"/>.</exception>
+    public void ClosestSpacingX(Index lineIndex, float targetXOffset, out int index, out float closestXOffset) {
+        if (!lineIndex.IsFromEnd && lineIndex.Value < 0) {
+            throw new IndexOutOfRangeException($"Received negative index {lineIndex.Value}");
+        }
+        var msrmts = Measurements;
+        var lineIdxVal = lineIndex.GetOffset(msrmts.Lines.Count);
+        var text = Text;
+        if (lineIdxVal >= msrmts.Lines.Count) {
+            throw new IndexOutOfRangeException($"Received index {lineIdxVal} (from '{lineIndex}') which is out-of-range for text with line count {msrmts.Lines.Count}: {text}");
+        }
+
+        var line = msrmts.Lines[lineIndex];
+        if (targetXOffset < line.LeftOffset) {
+            index = line.FirstCharIndex;
+            closestXOffset = line.LeftOffset;
+            return;
+        }
+        if (targetXOffset > line.RightOffset) {
+            index = line.LastCharIndex + 1;
+            closestXOffset = line.RightOffset;
+            return;
+        }
+
+        var checkX = line.LeftOffset;
+        for (int i = line.FirstCharIndex; i <= line.LastCharIndex; i++) {
+            if (Font.Characters.TryGetValue(text[i], out var ch)) {
+                var width = 0f;
+                var kerningBefore = 0f;
+                if (i > line.FirstCharIndex) { kerningBefore = Font.KerningBetween(text[i - 1], text[i]); }
+                var kerningAfter = 0f;
+                if (i < line.LastCharIndex) { kerningAfter = Font.KerningBetween(text[i], text[i + 1]); }
+                width = kerningBefore + ch.XAdvance + kerningAfter;
+                if (checkX + width > targetXOffset) {
+                    var rem = targetXOffset - checkX;
+                    index = i;
+                    closestXOffset = checkX;
+                    if (rem >= width / 2f) {
+                        index++;
+                        closestXOffset += width - kerningAfter / 2f;
+                    } else {
+                        closestXOffset -= kerningBefore / 2f;
+                    }
+                    return;
+                }
+                checkX += width - kerningAfter;
+            }
+        }
+        throw new UnreachableException($"The line's {nameof(Measurement.Line.RightOffset)} ({line.RightOffset}) and the actual right edge of its last character ({checkX}) don't match, which indicates a mistake in {nameof(TextElement)}.{nameof(Measure)}(). Please report this to the Macrorouting Tool developer(s)!");
+    }
+
+    /// <summary>
+    /// Finds the horizontal center of the spacing between two letters which is closest to the given position.
+    /// </summary>
+    /// <param name="targetOffset">Target offset <inheritdoc cref="XMLDoc.Unit_PxAtTargetRes"/>.</param>
+    /// <param name="index">If the closest space is to the right of the closest line's last character, this will be one more than the line's <see cref="Measurement.Line.LastCharIndex"/>.
+    /// Otherwise, this will be the index of the character of which this space is to the left.</param>
+    /// <param name="closestXOffset">Horizontal center of the spacing between two letters which is closest to the given position.</param>
+    /// <exception cref="UnreachableException">The closest line's RightOffset and the actual right edge of its last character don't match, indicating a mistake in <see cref="Measure"/>.</exception>
+    public void ClosestSpacingX(Vector2 targetOffset, out int index, out float closestXOffset) {
+        int lineIndex;
+        var msrmts = Measurements;
+        var top = Position.Y - msrmts.Height * Justify.Y;
+        if (targetOffset.Y < top) {
+            lineIndex = 0;
+        } else if (targetOffset.Y > top + msrmts.Height) {
+            lineIndex = msrmts.Lines.Count - 1;
+        } else {
+            lineIndex = (int)Math.Round(msrmts.Height / Font.LineHeight * targetOffset.Y);
+        }
+        ClosestSpacingX(lineIndex, targetOffset.X, out index, out closestXOffset);
+        return;
+    }
+
+    /// <summary>
     /// Measurements related to a character at a specific index in a <see cref="TextElement"/> based on
     /// that element's <see cref="Measurements"/> at the time this object was created.
     /// </summary>
@@ -539,7 +623,7 @@ public class TextElement : VisualElement {
         }
         //should be unreachable -- if not, the last row's LastIndex is less than the given index,
         //but the given index isn't out of range of the original text. this can only mean there's more text that wasn't measured
-        throw new System.Diagnostics.UnreachableException($"{nameof(TextElement)}.{nameof(Measure)} seems to have a logical error that prevented some of this element's text from being measured. Please report this to the Macrorouting Tool developer!");
+        throw new UnreachableException($"{nameof(TextElement)}.{nameof(Measure)} seems to have a logical error that prevented some of this element's text from being measured. Please report this to the Macrorouting Tool developer(s)!");
     }
 
     public override void Render() {
