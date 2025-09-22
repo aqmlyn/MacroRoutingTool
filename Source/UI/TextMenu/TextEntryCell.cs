@@ -32,11 +32,11 @@ partial class TableMenu {
         /// <summary>
         /// The texture drawn as the background of this text input field.
         /// </summary>
-        public TextureElement BackElement = new() { Texture = UIHelpers.Square, Color = Color.DarkSlateGray * 0.8f };
+        public TextureElement BackElement = new() { Texture = UIHelpers.Square, Color = Color.DarkSlateGray };
         /// <summary>
         /// The texture drawn over the selected text of this text input field, when there is any selected text.
         /// </summary>
-        public TextureElement SelectElement = new() { Texture = UIHelpers.Square, Color = HighlightColorA * 0.4f, Justify = new(0f, 0.5f) };
+        public TextureElement SelectElement = new() { Texture = UIHelpers.Square, Color = GraphViewer.ItemSelectedColor * 0.33f, Justify = new(0f, 0.5f) };
         /// <summary>
         /// The element that contains and renders this input field's current text.
         /// </summary>
@@ -154,7 +154,7 @@ partial class TableMenu {
         /// <summary>
         /// Default color of the caret in every text entry cell.
         /// </summary>
-        public static Color CaretDefaultColor = HighlightColorB * 0.9f;
+        public static Color CaretDefaultColor = Color.White * 0.9f;
 
         /// <summary>
         /// The element that contains and renders this caret's texture. 
@@ -164,7 +164,7 @@ partial class TableMenu {
         /// <summary>
         /// Time between each change in this caret's visibility.
         /// </summary>
-        public float CaretBlinkInterval = 0.6f;
+        public float CaretBlinkInterval = 0.4f;
 
         /// <summary>
         /// Opacity of this caret during blinks. 0 is invisible, 1 is opaque.
@@ -546,7 +546,7 @@ partial class TableMenu {
             index = CaretFocus - 1;
             while (index > 0 && WordSeparationCheck(this, index)) { index--; }
             while (index > 0 && !WordSeparationCheck(this, index)) { index--; }
-            if (index == 0 && WordSeparationCheck(this, index)) { after = false; }
+            if (index == 0 && !WordSeparationCheck(this, index)) { after = false; }
             return;
         }
 
@@ -565,7 +565,7 @@ partial class TableMenu {
             index = CaretFocus + 1;
             while (index < end && WordSeparationCheck(this, index)) { index++; }
             while (index < end && !WordSeparationCheck(this, index)) { index++; }
-            if (index == end && WordSeparationCheck(this, index)) { after = true; }
+            if (index == end && !WordSeparationCheck(this, index)) { after = true; }
             return;
         }
 
@@ -593,11 +593,11 @@ partial class TableMenu {
         /// <summary>
         /// Default check for enabling <see cref="CaretMovementByWord"/>, which checks for either Control key.
         /// </summary>
-        public static bool DefaultCaretMovementByWordCheck(TextEntry _, char __) => MInput.Keyboard.Pressed(Keys.LeftControl) || MInput.Keyboard.Pressed(Keys.RightControl);
+        public static bool DefaultCaretMovementByWordCheck(TextEntry _, char __) => MInput.Keyboard.Check(Keys.LeftControl) || MInput.Keyboard.Check(Keys.RightControl);
         /// <summary>
         /// Default check for enabling <see cref="CaretMovementSelect"/>, which checks for either Shift key.
         /// </summary>
-        public static bool DefaultCaretMovementSelectCheck(TextEntry _, char __) => MInput.Keyboard.Pressed(Keys.LeftShift) || MInput.Keyboard.Pressed(Keys.RightShift);
+        public static bool DefaultCaretMovementSelectCheck(TextEntry _, char __) => MInput.Keyboard.Check(Keys.LeftShift) || MInput.Keyboard.Check(Keys.RightShift);
 
         /// <summary>
         /// Default check associated with <see cref="UpdateCaretMovementOptions"/>, which always returns true,
@@ -865,9 +865,12 @@ partial class TableMenu {
             BackElement.Justify.Y = JustifyY ?? BackElement.Justify.Y;
             BackElement.ScaleToFit(width, height);
             var ogBackBorderThickness = BackElement.BorderThickness;
-            if (AutoHoverBorder) {
+            if (Typing) {
+                BackElement.BorderColor = HighlightColorB;
+                if (highlighted) { BackElement.BorderThickness = 2f; }
+            } else if (AutoHoverBorder) {
                 BackElement.BorderColor = Container.HighlightColor;
-                if (highlighted) { BackElement.BorderThickness = 0f; }
+                if (highlighted) { BackElement.BorderThickness = 2f; }
             }
             BackElement.Render();
             BackElement.BorderThickness = ogBackBorderThickness;
@@ -893,20 +896,20 @@ partial class TableMenu {
                 TextElement.MaxHeight = textHeight;
                 TextElement.Render();
                 if (Typing) {
-                    if (CaretAnchor != CaretFocus) {
+                    if (CaretAnchor != CaretFocus || CaretAnchorAfter != CaretFocusAfter) {
                         //draw selected text indicator
                         SelectElement.Justify.Y = JustifyY ?? TextElement.Justify.Y;
                         Utils.Order(CaretAnchor, CaretFocus, CaretAnchorMeasure, CaretFocusMeasure, out var firstMeasure, out var secondMeasure);
                         if (firstMeasure.Line == secondMeasure.Line) {
                             //all on one line
                             SelectElement.Position.X = textPosition.X + firstMeasure.Offset.X;
-                            SelectElement.Position.Y = textPosition.Y + firstMeasure.Offset.Y;
+                            SelectElement.Position.Y = textPosition.Y + firstMeasure.Offset.Y + TextElement.Font.LineHeight * (JustifyY ?? TextElement.Justify.Y);
                             SelectElement.ScaleToFit(secondMeasure.Offset.X - firstMeasure.Offset.X, TextElement.Font.LineHeight);
                             SelectElement.Render();
                         } else {
                             //first line
                             SelectElement.Position.X = textPosition.X + firstMeasure.Offset.X;
-                            SelectElement.Position.Y = textPosition.Y + firstMeasure.Offset.Y;
+                            SelectElement.Position.Y = textPosition.Y + firstMeasure.Offset.Y + TextElement.Font.LineHeight * (JustifyY ?? TextElement.Justify.Y);
                             SelectElement.ScaleToFit(firstMeasure.Line.RightOffset - firstMeasure.Offset.X, TextElement.Font.LineHeight);
                             SelectElement.Render();
                             //lines between first and last (if any)
