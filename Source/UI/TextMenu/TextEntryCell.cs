@@ -188,6 +188,18 @@ partial class TableMenu {
             }
         }
 
+        public bool _caretAnchorAfter = false;
+
+        public bool CaretAnchorAfter {
+            get => _caretAnchorAfter;
+            set {
+                CaretAnchorNeedsRemeasured |= _caretAnchorAfter != value;
+                _caretAnchorAfter = value;
+            }
+        }
+
+        public int CaretAnchorInsert => CaretAnchor + (CaretAnchorAfter ? 1 : 0);
+
         /// <summary>
         /// Backing field for <see cref="CaretAnchorMeasure"/>.
         /// </summary>
@@ -224,7 +236,19 @@ partial class TableMenu {
                 _caretFocus = value;
             }
         }
-        
+
+        public bool _caretFocusAfter = false;
+
+        public bool CaretFocusAfter {
+            get => _caretFocusAfter;
+            set {
+                CaretFocusNeedsRemeasured |= _caretFocusAfter != value;
+                _caretFocusAfter = value;
+            }
+        }
+
+        public int CaretFocusInsert => CaretFocus + (CaretFocusAfter ? 1 : 0);
+
         /// <summary>
         /// Backing field for <see cref="CaretFocusMeasure"/>.
         /// </summary>
@@ -247,16 +271,36 @@ partial class TableMenu {
         public bool CaretFocusNeedsRemeasured = false;
 
         /// <summary>
+        /// Backing field for <see cref="CaretTargetX"/>.
+        /// </summary>
+        public float _caretTargetX = 0f;
+
+        /// <summary>
         /// Target horizontal offset to place <see cref="Focus"/> as close as possible to when moving it vertically.
         /// </summary>
-        public float CaretTargetX = 0f;
+        public float CaretTargetX {
+            get {
+                if (CaretTargetReset) { _caretTargetX = CaretFocusMeasure.Offset.X; }
+                return _caretTargetX;
+            }
+            set {
+                CaretTargetReset = false;
+                _caretTargetX = value;
+            }
+        }
+
+        /// <summary>
+        /// Whether <see cref="CaretTargetX"/> is to be reset to the current <see cref="CaretFocusMeasure"/>'s X offset before it is next returned.
+        /// </summary>
+        public bool CaretTargetReset = false;
 
         /// <summary>
         /// Remeasure <see cref="CaretAnchorMeasure"/> so that it will be drawn in the correct position when rendering.
         /// </summary>
         public void RemeasureCaretAnchor() {
             CaretAnchorNeedsRemeasured = false;
-            _caretAnchorOffset = TextElement.MeasureChar(CaretAnchor);
+            if (string.IsNullOrEmpty(TextElement.Text)) { _caretAnchorOffset = null; }
+            else {_caretAnchorOffset = TextElement.MeasureChar(CaretAnchor, CaretAnchorAfter);}
         }
 
         /// <summary>
@@ -264,41 +308,19 @@ partial class TableMenu {
         /// </summary>
         public void RemeasureCaretFocus() {
             CaretFocusNeedsRemeasured = false;
-            _caretFocusOffset = TextElement.MeasureChar(CaretFocus);
+            if (string.IsNullOrEmpty(TextElement.Text)) { _caretFocusOffset = null; }
+            else {_caretFocusOffset = TextElement.MeasureChar(CaretFocus, CaretFocusAfter);}
         }
 
-        /// <summary>
-        /// Assign the indices <see cref="CaretAnchor"/> and <see cref="CaretFocus"/> in their current chronological order to the given out variables.
-        /// </summary>
-        /// <param name="first">The index that comes first.</param>
-        /// <param name="second">The index that comes second.</param>
-        public void OrderCaretIndices(out int first, out int second) {
-            if (CaretAnchor < CaretFocus) {
-                first = CaretAnchor;
-                second = CaretFocus;
-            } else {
-                first = CaretFocus;
-                second = CaretAnchor;
-            }
-        }
-
-        /// <summary>
-        /// Assign <see cref="CaretAnchorMeasure"/> and <see cref="CaretFocusMeasure"/> in their current chronological order to the given out variables.
-        /// </summary>
-        /// <param name="first">The measure that comes first.</param>
-        /// <param name="second">The measure that comes second.</param>
-        public void OrderCaretMeasurements(out TextElement.CharMeasurements first, out TextElement.CharMeasurements second) {
-            if (CaretAnchor < CaretFocus) {
-                first = CaretAnchorMeasure;
-                second = CaretFocusMeasure;
-            } else {
-                first = CaretFocusMeasure;
-                second = CaretAnchorMeasure;
-            }
+        public TextEntry() : base() {
+            Selectable = true;
         }
 
         ~TextEntry() {
-            if (Typing) { LoseFocus(); }
+            if (Typing) {
+                Logger.Warn(MRT.LogTags.TextEntry, $"A {nameof(TextEntry)} item (text: {TextElement.Text}) was destroyed while the user was still typing in it -- is this a bug?");
+                LoseFocus();
+            }
         }
 
         /// <summary>
@@ -373,13 +395,21 @@ partial class TableMenu {
         /// If any text is selected, replace it with the given string. Otherwise, insert the given string at the caret's current position.
         /// </summary>
         public void InsertAtCaret(string str) {
-            OrderCaretIndices(out var insertStart, out var insertEnd);
+            Utils.Order(CaretAnchorInsert, CaretFocusInsert, out var insertStart, out var insertEnd);
             var existingText = TextElement.Text;
             var newText = existingText[..insertStart] + str;
             if (insertEnd < existingText.Length) { newText += existingText[insertEnd..]; }
             TextElement.Text = newText;
-            CaretAnchor = CaretFocus = insertStart + str.Length;
-            CaretTargetX = CaretFocusMeasure.Offset.X;
+            //default to putting the caret after the last inserted character...
+            CaretAnchor = CaretFocus = insertStart + str.Length - 1;
+            if (CaretAnchor < 0) {
+                //...but that requires a special case for inserting empty string at index 0, since that would give index -1
+                CaretAnchor = CaretFocus = 0;
+                CaretAnchorAfter = CaretFocusAfter = false;
+            } else {
+                CaretAnchorAfter = CaretFocusAfter = true;
+            }
+            CaretAnchorNeedsRemeasured = CaretFocusNeedsRemeasured = CaretTargetReset = true;
         }
 
         /// <summary>
@@ -438,7 +468,7 @@ partial class TableMenu {
                 return;
             }
 
-            textEntry.OrderCaretIndices(out var selStart, out var selEnd);
+            Utils.Order(textEntry.CaretFocusInsert, textEntry.CaretAnchorInsert, out var selStart, out var selEnd);
             var selText = textEntry.TextElement.Text[selStart..(selEnd - selStart)];
             TextInput.SetClipboardText(selText);
         }
@@ -470,7 +500,9 @@ partial class TableMenu {
                 return;
             }
             textEntry.CaretAnchor = 0;
-            textEntry.CaretFocus = text.Length;
+            textEntry.CaretAnchorAfter = false;
+            textEntry.CaretFocus = text.Length - 1;
+            textEntry.CaretFocusAfter = true;
         }
 
         /// <summary>
@@ -479,13 +511,17 @@ partial class TableMenu {
         /// <param name="idx">Index in the current text to move the caret to.</param>
         /// <param name="select">Whether to create a selection.</param>
         /// <exception cref="IndexOutOfRangeException">The received index was either negative or greater than the length of the current text.</exception>
-        public void MoveCaretIndex(Index idx, bool select = false) {
+        public void MoveCaretIndex(Index idx, bool after, bool select = false) {
             if (!idx.IsFromEnd && idx.Value < 0) { throw new IndexOutOfRangeException($"Received negative index: {idx.Value}"); }
             var text = TextElement.Text;
             var idxval = idx.GetOffset(text.Length);
-            if (idxval > text.Length) { throw new IndexOutOfRangeException($"Index {idxval} (from {idx}) is greater than current length of text ({text.Length}): {text}"); }
+            if (text.Length > 0 && idxval >= text.Length) { throw new IndexOutOfRangeException($"Index {idxval} (from {idx}) is greater than current length of text ({text.Length}): {text}"); }
             CaretFocus = idxval;
-            if (!select) { CaretAnchor = idxval; }
+            CaretFocusAfter = after;
+            if (!select) {
+                CaretAnchor = idxval;
+                CaretAnchorAfter = after;
+            }
         }
 
         /// <summary>
@@ -494,31 +530,43 @@ partial class TableMenu {
         /// <param name="idx">Index in the current text to move the caret to.</param>
         /// <param name="select">A function that returns whether to create a selection.</param>
         /// <exception cref="IndexOutOfRangeException">The received index was either negative or greater than the length of the current text.</exception>
-        public void MoveCaretIndex(Index idx, Func<bool> select) => MoveCaretIndex(idx, select?.Invoke() ?? false);
+        public void MoveCaretIndex(Index idx, bool after, Func<bool> select) => MoveCaretIndex(idx, after, select?.Invoke() ?? false);
 
         /// <summary>
         /// Returns the closest index before <see cref="CaretFocus"/> at which <see cref="WordSeparationCheck"/>
         /// returns true, or 0 if there is no such index.
         /// </summary>
-        public int IndexAtPreviousWord() {
-            if (CaretFocus == 0) { return 0; }
-            var idx = CaretFocus - 1;
-            while (idx > 0 && WordSeparationCheck(this, idx)) { idx--; }
-            while (idx > 0 && !WordSeparationCheck(this, idx)) { idx--; }
-            return idx;
+        public void IndexAtPreviousWord(out int index, out bool after) {
+            after = true;
+            if (CaretFocus == 0) {
+                index = 0;
+                after = false;
+                return;
+            }
+            index = CaretFocus - 1;
+            while (index > 0 && WordSeparationCheck(this, index)) { index--; }
+            while (index > 0 && !WordSeparationCheck(this, index)) { index--; }
+            if (index == 0 && WordSeparationCheck(this, index)) { after = false; }
+            return;
         }
 
         /// <summary>
         /// Returns the closest index after <see cref="CaretFocus"/> at which <see cref="WordSeparationCheck"/>
         /// returns true, or the length of the text if there is no such index.
         /// </summary>
-        public int IndexAtNextWord() {
-            var end = TextElement.Text.Length;
-            if (CaretFocus == end) { return end; }
-            var idx = CaretFocus + 1;
-            while (idx < end && WordSeparationCheck(this, idx)) { idx++; }
-            while (idx < end && !WordSeparationCheck(this, idx)) { idx++; }
-            return idx;
+        public void IndexAtNextWord(out int index, out bool after) {
+            after = false;
+            var end = TextElement.Text.Length - 1;
+            if (CaretFocus == end) {
+                index = end;
+                after = true;
+                return;
+            }
+            index = CaretFocus + 1;
+            while (index < end && WordSeparationCheck(this, index)) { index++; }
+            while (index < end && !WordSeparationCheck(this, index)) { index++; }
+            if (index == end && WordSeparationCheck(this, index)) { after = true; }
+            return;
         }
 
         /// <summary>
@@ -599,18 +647,20 @@ partial class TableMenu {
         /// </summary>
         public static void MoveCaretLeft(TextEntry textEntry, char _, InputEventInstructions evInstr) {
             evInstr.Break = true;
-            if (textEntry.CaretFocus == 0) {
+            if (textEntry.CaretFocus == 0 && !textEntry.CaretFocusAfter) {
                 evInstr.InvalidMinor = true;
                 return;
             }
             int idx;
+            var after = false;
             if (textEntry.CaretMovementByWord) {
-                idx = textEntry.IndexAtPreviousWord();
+                textEntry.IndexAtPreviousWord(out idx, out after);
             } else {
-                idx = textEntry.CaretFocus - 1;
+                idx = textEntry.CaretFocus;
+                if (!textEntry.CaretFocusAfter) { idx--; }
             }
-            textEntry.MoveCaretIndex(idx, textEntry.CaretMovementSelect);
-            textEntry.CaretTargetX = textEntry.CaretFocusMeasure.Offset.X;
+            textEntry.MoveCaretIndex(idx, after, textEntry.CaretMovementSelect);
+            textEntry.CaretTargetReset = true;
         }
         /// <summary>
         /// Default action associated with the right arrow key, which:
@@ -621,19 +671,21 @@ partial class TableMenu {
         /// </summary>
         public static void MoveCaretRight(TextEntry textEntry, char _, InputEventInstructions evInstr) {
             evInstr.Break = true;
-            var end = textEntry.TextElement.Text.Length;
-            if (textEntry.CaretFocus == end) {
+            var end = textEntry.TextElement.Text.Length - 1;
+            if (textEntry.CaretFocus > end || (textEntry.CaretFocus == end && textEntry.CaretFocusAfter)) {
                 evInstr.InvalidMinor = true;
                 return;
             }
             int idx;
+            var after = true;
             if (textEntry.CaretMovementByWord) {
-                idx = textEntry.IndexAtNextWord();
+                textEntry.IndexAtNextWord(out idx, out after);
             } else {
-                idx = textEntry.CaretFocus + 1;
+                idx = textEntry.CaretFocus;
+                if (textEntry.CaretFocusAfter) { idx++; }
             }
-            textEntry.MoveCaretIndex(idx, textEntry.CaretMovementSelect);
-            textEntry.CaretTargetX = textEntry.CaretFocusMeasure.Offset.X;
+            textEntry.MoveCaretIndex(idx, after, textEntry.CaretMovementSelect);
+            textEntry.CaretTargetReset = true;
         }
         /// <summary>
         /// Default action associated with the up arrow key, which:
@@ -645,12 +697,12 @@ partial class TableMenu {
         public static void MoveCaretUp(TextEntry textEntry, char _, InputEventInstructions evInstr) {
             evInstr.Break = true;
             var line = textEntry.TextElement.Measurements.Lines.FindIndex(line => line.LastCharIndex >= textEntry.CaretFocus);
-            if (line == 0) {
+            if (line <= 0) {
                 evInstr.InvalidMinor = true;
                 return;
             }
-            textEntry.TextElement.ClosestSpacingX(line - 1, textEntry.CaretTargetX, out int idx, out var _);
-            textEntry.MoveCaretIndex(idx, textEntry.CaretMovementSelect);
+            textEntry.TextElement.ClosestSpacingX(line - 1, textEntry.CaretTargetX, out int idx, out bool after, out var _);
+            textEntry.MoveCaretIndex(idx, after, textEntry.CaretMovementSelect);
         }
         /// <summary>
         /// Default action associated with the down arrow key, which:
@@ -661,13 +713,14 @@ partial class TableMenu {
         /// </summary>
         public static void MoveCaretDown(TextEntry textEntry, char _, InputEventInstructions evInstr) {
             evInstr.Break = true;
-            var line = textEntry.TextElement.Measurements.Lines.FindIndex(line => line.LastCharIndex >= textEntry.CaretFocus);
-            if (line == textEntry.TextElement.Measurements.Lines.Count) {
+            var lines = textEntry.TextElement.Measurements.Lines;
+            var line = lines.FindIndex(line => line.LastCharIndex >= textEntry.CaretFocus);
+            if (line == -1 || line >= lines.Count - 1) {
                 evInstr.InvalidMinor = true;
                 return;
             }
-            textEntry.TextElement.ClosestSpacingX(line + 1, textEntry.CaretTargetX, out int idx, out var _);
-            textEntry.MoveCaretIndex(idx, textEntry.CaretMovementSelect);
+            textEntry.TextElement.ClosestSpacingX(line + 1, textEntry.CaretTargetX, out int idx, out bool after, out var _);
+            textEntry.MoveCaretIndex(idx, after, textEntry.CaretMovementSelect);
         }
         /// <summary>
         /// Default action associated with the Home key, which:
@@ -679,7 +732,7 @@ partial class TableMenu {
         public static void MoveCaretLineStart(TextEntry textEntry, char _, InputEventInstructions evInstr) {
             evInstr.Break = true;
             var line = textEntry.TextElement.Measurements.Lines.First(line => line.LastCharIndex >= textEntry.CaretFocus);
-            textEntry.MoveCaretIndex(line.FirstCharIndex, textEntry.CaretMovementSelect);
+            textEntry.MoveCaretIndex(line.FirstCharIndex, false, textEntry.CaretMovementSelect);
             textEntry.CaretTargetX = textEntry.CaretFocusMeasure.Offset.X;
         }
         /// <summary>
@@ -692,7 +745,7 @@ partial class TableMenu {
         public static void MoveCaretLineEnd(TextEntry textEntry, char _, InputEventInstructions evInstr) {
             evInstr.Break = true;
             var line = textEntry.TextElement.Measurements.Lines.First(line => line.LastCharIndex >= textEntry.CaretFocus);
-            textEntry.MoveCaretIndex(line.LastCharIndex + 1, textEntry.CaretMovementSelect);
+            textEntry.MoveCaretIndex(line.LastCharIndex + 1, true, textEntry.CaretMovementSelect);
             textEntry.CaretTargetX = textEntry.CaretFocusMeasure.Offset.X;
         }
 
@@ -713,22 +766,21 @@ partial class TableMenu {
         /// </summary>
         public static void Backspace(TextEntry textEntry, char _, InputEventInstructions evInstr) {
             evInstr.Break = true;
-            if (textEntry.CaretAnchor == 0 && textEntry.CaretFocus == 0) {
+            if (textEntry.CaretAnchor == 0 && !textEntry.CaretAnchorAfter && textEntry.CaretFocus == 0 && !textEntry.CaretFocusAfter) {
                 evInstr.InvalidMinor = true;
                 return;
             }
             if (textEntry.CaretAnchor == textEntry.CaretFocus) {
                 if (textEntry.CaretMovementByWord) {
-                    textEntry.CaretAnchor = textEntry.IndexAtPreviousWord();
-                    textEntry.InsertAtCaret("");
-                    textEntry.CaretFocus = textEntry.CaretAnchor;
+                    textEntry.IndexAtPreviousWord(out var anchor, out var after);
+                    textEntry.CaretAnchor = anchor;
+                    textEntry.CaretAnchorAfter = after;
                 } else {
-                    textEntry.CaretAnchor = textEntry.CaretFocus--;
-                    textEntry.TextElement.Text = textEntry.TextElement.Text.Remove(textEntry.CaretAnchor, 1);
+                    textEntry.CaretAnchor = textEntry.CaretFocus - 1;
                 }
-            } else {
-                textEntry.InsertAtCaret("");
             }
+            textEntry.InsertAtCaret("");
+            textEntry.CaretFocus = textEntry.CaretAnchor;
         }
         /// <summary>
         /// Default action associated with the Delete key, which:
@@ -739,28 +791,27 @@ partial class TableMenu {
         public static void Delete(TextEntry textEntry, char _, InputEventInstructions evInstr) {
             evInstr.Break = true;
             var text = textEntry.TextElement.Text;
-            var end = text.Length;
-            if (textEntry.CaretAnchor == end && textEntry.CaretFocus == end) {
+            var end = text.Length - 1;
+            if (textEntry.CaretAnchor == end && textEntry.CaretAnchorAfter && textEntry.CaretFocus == end && textEntry.CaretFocusAfter) {
                 evInstr.InvalidMinor = true;
                 return;
             }
             if (textEntry.CaretAnchor == textEntry.CaretFocus) {
                 if (textEntry.CaretMovementByWord) {
-                    textEntry.CaretAnchor = textEntry.IndexAtNextWord();
-                    textEntry.InsertAtCaret("");
-                    textEntry.CaretFocus = textEntry.CaretAnchor;
+                    textEntry.IndexAtNextWord(out var anchor, out var after);
+                    textEntry.CaretAnchor = anchor;
+                    textEntry.CaretAnchorAfter = after;
                 } else {
-                    textEntry.TextElement.Text = textEntry.TextElement.Text.Remove(textEntry.CaretAnchor, 1);
+                    textEntry.CaretAnchor = textEntry.CaretFocus + 1;
                 }
-            } else {
-                textEntry.InsertAtCaret("");
             }
+            textEntry.InsertAtCaret("");
         }
 
         /// <summary>
         /// Default check for the Escape key.
         /// </summary>
-        public static bool EscapeCheck(TextEntry _, char ch) => ch == '\e';
+        public static bool EscapeCheck(TextEntry _, char ch) => MInput.Keyboard.Pressed(Keys.Escape);
         /// <summary>
         /// Release focus from the <see cref="TextEntry"/>.
         /// </summary>
@@ -775,30 +826,35 @@ partial class TableMenu {
         }
 
         public override void Update() {
-            while (CharsReceivedThisFrame.TryDequeue(out var ch)) {
-                foreach (var charListener in OnReceiveChar) {
-                    if (charListener.Key?.Invoke(this, ch) ?? false) {
-                        var evInstr = new InputEventInstructions();
-                        charListener.Value?.Invoke(this, ch, evInstr);
-                        if (evInstr.Break) {
-                            ConsumeGameInput();
-                            if (evInstr.InvalidMajor) { NotifyInvalid(); }
-                            CharsReceivedThisFrame.Clear();
-                            return;
+            if (Typing) {
+                char ch = (char)0;
+                //do-while instead of just while to guarantee running at least once each frame to check for scancodes
+                do {
+                    foreach (var charListener in OnReceiveChar) {
+                        if (charListener.Key?.Invoke(this, ch) ?? false) {
+                            var evInstr = new InputEventInstructions();
+                            charListener.Value?.Invoke(this, ch, evInstr);
+                            if (evInstr.Break) {
+                                ConsumeGameInput();
+                                if (evInstr.InvalidMajor) { NotifyInvalid(); }
+                                CharsReceivedThisFrame.Clear();
+                                return;
+                            }
                         }
                     }
-                }
+                } while (CharsReceivedThisFrame.TryDequeue(out ch));
             }
         }
 
         public override float UnrestrictedWidth() => float.MaxValue;
-        public override float UnrestrictedHeight() => float.MaxValue;
+        public override float UnrestrictedHeight() => TextElement?.Measurements.Height + InnerMargins.Top + InnerMargins.Bottom ?? 0f;
 
         public override void Render(Vector2 position, bool highlighted) {
             base.Render(position, highlighted);
 
             var width = LeftWidth();
             var height = Height();
+            var textPosition = new Vector2(position.X + MathHelper.Lerp(InnerMargins.Left, -InnerMargins.Right, JustifyX ?? TextElement.Justify.X), position.Y + MathHelper.Lerp(InnerMargins.Top, -InnerMargins.Bottom, JustifyY ?? TextElement.Justify.Y));
             var textWidth = width - InnerMargins.Left - InnerMargins.Right;
             var textHeight = height - InnerMargins.Top - InnerMargins.Bottom;
 
@@ -815,10 +871,10 @@ partial class TableMenu {
             }
             BackElement.Render();
             BackElement.BorderThickness = ogBackBorderThickness;
-            if (string.IsNullOrEmpty(TextElement.Text)) {
+            if (!Typing && string.IsNullOrEmpty(TextElement.Text)) {
                 //draw placeholder text when empty
-                PlaceholderElement.Position.X = position.X;
-                PlaceholderElement.Position.Y = position.Y;
+                PlaceholderElement.Position.X = textPosition.X;
+                PlaceholderElement.Position.Y = textPosition.Y;
                 PlaceholderElement.Justify.X = JustifyX ?? PlaceholderElement.Justify.X;
                 PlaceholderElement.Justify.Y = JustifyY ?? PlaceholderElement.Justify.Y;
                 PlaceholderElement.MaxWidth = textWidth;
@@ -829,8 +885,8 @@ partial class TableMenu {
                     CaretElement.Position.Y = TextElement.Font.LineHeight * (JustifyY ?? TextElement.Justify.Y);
                 }
             } else {
-                TextElement.Position.X = position.X;
-                TextElement.Position.Y = position.Y;
+                TextElement.Position.X = textPosition.X;
+                TextElement.Position.Y = textPosition.Y;
                 TextElement.Justify.X = JustifyX ?? TextElement.Justify.X;
                 TextElement.Justify.Y = JustifyY ?? TextElement.Justify.Y;
                 TextElement.MaxWidth = textWidth;
@@ -840,47 +896,47 @@ partial class TableMenu {
                     if (CaretAnchor != CaretFocus) {
                         //draw selected text indicator
                         SelectElement.Justify.Y = JustifyY ?? TextElement.Justify.Y;
-                        OrderCaretMeasurements(out var firstMeasure, out var secondMeasure);
+                        Utils.Order(CaretAnchor, CaretFocus, CaretAnchorMeasure, CaretFocusMeasure, out var firstMeasure, out var secondMeasure);
                         if (firstMeasure.Line == secondMeasure.Line) {
                             //all on one line
-                            SelectElement.Position.X = position.X + firstMeasure.Offset.X;
-                            SelectElement.Position.Y = position.Y + firstMeasure.Offset.Y;
+                            SelectElement.Position.X = textPosition.X + firstMeasure.Offset.X;
+                            SelectElement.Position.Y = textPosition.Y + firstMeasure.Offset.Y;
                             SelectElement.ScaleToFit(secondMeasure.Offset.X - firstMeasure.Offset.X, TextElement.Font.LineHeight);
                             SelectElement.Render();
                         } else {
                             //first line
-                            SelectElement.Position.X = position.X + firstMeasure.Offset.X;
-                            SelectElement.Position.Y = position.Y + firstMeasure.Offset.Y;
+                            SelectElement.Position.X = textPosition.X + firstMeasure.Offset.X;
+                            SelectElement.Position.Y = textPosition.Y + firstMeasure.Offset.Y;
                             SelectElement.ScaleToFit(firstMeasure.Line.RightOffset - firstMeasure.Offset.X, TextElement.Font.LineHeight);
                             SelectElement.Render();
                             //lines between first and last (if any)
                             var lineIndex = firstMeasure.Line.Index + 1;
                             while (lineIndex < secondMeasure.Line.Index) {
                                 var line = TextElement.Measurements.Lines[lineIndex];
-                                SelectElement.Position.X = position.X + line.LeftOffset;
-                                SelectElement.Position.Y = position.Y - TextElement.Measurements.Height * TextElement.Justify.Y + line.Index * TextElement.Font.LineHeight;
+                                SelectElement.Position.X = textPosition.X + line.LeftOffset;
+                                SelectElement.Position.Y = textPosition.Y - TextElement.Measurements.Height * TextElement.Justify.Y + line.Index * TextElement.Font.LineHeight;
                                 SelectElement.ScaleToFit(line.RightOffset - line.LeftOffset, TextElement.Font.LineHeight);
                                 SelectElement.Render();
                             }
                             //last line
-                            SelectElement.Position.X = position.X + secondMeasure.Line.LeftOffset;
-                            SelectElement.Position.Y = position.Y + secondMeasure.Offset.Y;
+                            SelectElement.Position.X = textPosition.X + secondMeasure.Line.LeftOffset;
+                            SelectElement.Position.Y = textPosition.Y + secondMeasure.Offset.Y;
                             SelectElement.ScaleToFit(secondMeasure.Offset.X - secondMeasure.Line.LeftOffset, TextElement.Font.LineHeight);
                             SelectElement.Render();
                         }
                     }
+                    //draw caret while typing
+                    var origCaretColor = CaretElement.Color;
+                    if (Engine.Scene.BetweenInterval(CaretBlinkInterval)) {
+                        CaretElement.Color *= CaretBlinkAlpha;
+                    }
+                    CaretElement.Position.X = textPosition.X + (CaretFocusMeasure?.Offset.X ?? 0f);
+                    CaretElement.Position.Y = textPosition.Y + (CaretFocusMeasure?.Offset.Y + TextElement.Font.LineHeight * (JustifyY ?? TextElement.Justify.Y) ?? 0f);
+                    CaretElement.Justify.Y = JustifyY ?? TextElement.Justify.Y;
+                    CaretElement.ScaleYToFit(textHeight, false);
+                    CaretElement.Render();
+                    CaretElement.Color = origCaretColor;
                 }
-                //draw caret while typing
-                var origCaretColor = CaretElement.Color;
-                if (Engine.Scene.BetweenInterval(CaretBlinkInterval)) {
-                    CaretElement.Color *= CaretBlinkAlpha;
-                }
-                CaretElement.Position.X = position.X + CaretFocusMeasure.Offset.X;
-                CaretElement.Position.Y = position.Y + CaretFocusMeasure.Offset.Y;
-                CaretElement.Justify.Y = JustifyY ?? TextElement.Justify.Y;
-                CaretElement.ScaleYToFit(textHeight);
-                CaretElement.Render();
-                CaretElement.Color = origCaretColor;
             }
         }
     }

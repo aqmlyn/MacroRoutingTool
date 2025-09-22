@@ -429,9 +429,24 @@ partial class TableMenu {
                         cell._column = columnIndex;
                         //set each cross measure using the cell on each axis with the longest individual cross measure.
                         var rowFormat = RowFormats.EnsureGet(rowIndex, _ => new() { Table = this });
-                        rowFormat._measure = Math.Max(rowFormat.MinMeasure ?? 0f, Math.Min(rowFormat.MaxMeasure ?? float.PositiveInfinity, cell.UnrestrictedHeight() + (cell.MarginBottom ?? 0f) + Math.Max(cell.MarginTop ?? 0f, UseItemSpacing && rowIndex > 0 ? ItemSpacing : 0f)));
+                        rowFormat._measure = Math.Max(
+                            rowFormat.MinMeasure ?? 0f,
+                            Math.Min(
+                                rowFormat.MaxMeasure ?? float.PositiveInfinity,
+                                cell.UnrestrictedHeight() + (cell.MarginBottom ?? 0f) + Math.Max(
+                                    cell.MarginTop ?? 0f,
+                                    UseItemSpacing && rowIndex > 0 ? ItemSpacing : 0f
+                                )
+                            )
+                        );
                         var columnFormat = ColumnFormats.EnsureGet(columnIndex, _ => new() { Table = this });
-                        columnFormat._measure = Math.Max(columnFormat.MinMeasure ?? 0f, Math.Min(columnFormat.MaxMeasure ?? float.PositiveInfinity, cell.UnrestrictedWidth() + (cell.MarginLeft ?? 0f) + (cell.MarginRight ?? 0f)));
+                        columnFormat._measure = Math.Max(
+                            columnFormat.MinMeasure ?? 0f, 
+                            Math.Min(
+                                columnFormat.MaxMeasure ?? float.PositiveInfinity, 
+                                cell.UnrestrictedWidth() + (cell.MarginLeft ?? 0f) + (cell.MarginRight ?? 0f)
+                            )
+                        );
                     }
                 }
                 rowIndex++;

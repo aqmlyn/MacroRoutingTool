@@ -45,7 +45,7 @@ public partial class TableMenu {
 
         public override float UnrestrictedWidth() => Element?.Measurements.Width ?? base.UnrestrictedWidth();
         public override float UnrestrictedHeight() => Element?.Measurements.Height ?? base.UnrestrictedHeight();
-        
+
         public override void Update() {
             Element?.Update();
             base.Update();

@@ -158,7 +158,7 @@ partial class TableMenu {
         public override void Update() {
             if (Menu != null) {
                 Selectable = SelectableCheck();
-                if (!Menu.Focused && Container?.Current == this && EnterCheck()) {
+                if (!Menu.Focused && (Container?.Focused ?? false) && Container?.Current == this && EnterCheck()) {
                     GainFocus();
                 }
                 Menu.Update();

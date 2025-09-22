@@ -99,7 +99,7 @@ partial class TableMenu {
     /// </summary>
     public void MoveCursorUp() {
         CursorBoundsCheck();
-        for (int i = Cursor.Row - 1; i != Cursor.Row; i = (--i + Rows.Count) % Rows.Count) {
+        for (int i = Cursor.Row - 1; i != Cursor.Row; i = (i - 1 + Rows.Count) % Rows.Count) {
             if (Columns[Cursor.Column].Items[i] != null) {
                 Cursor.Row = i;
                 return;
@@ -112,7 +112,7 @@ partial class TableMenu {
     /// </summary>
     public void MoveCursorDown() {
         CursorBoundsCheck();
-        for (int i = Cursor.Row + 1; i != Cursor.Row; i = (++i + Rows.Count) % Rows.Count) {
+        for (int i = Cursor.Row + 1; i != Cursor.Row; i = (i + 1 + Rows.Count) % Rows.Count) {
             if (Columns[Cursor.Column].Items[i] != null) {
                 Cursor.Row = i;
                 return;
@@ -125,7 +125,7 @@ partial class TableMenu {
     /// </summary>
     public void MoveCursorLeft() {
         CursorBoundsCheck();
-        for (int i = Cursor.Column - 1; i != Cursor.Column; i = (--i + Columns.Count) % Columns.Count) {
+        for (int i = Cursor.Column - 1; i != Cursor.Column; i = (i - 1 + Columns.Count) % Columns.Count) {
             if (Rows[Cursor.Row].Items[i] != null) {
                 Cursor.Column = i;
                 return;
@@ -138,7 +138,7 @@ partial class TableMenu {
     /// </summary>
     public void MoveCursorRight() {
         CursorBoundsCheck();
-        for (int i = Cursor.Column + 1; i != Cursor.Column; i = (++i + Columns.Count) % Columns.Count) {
+        for (int i = Cursor.Column + 1; i != Cursor.Column; i = (i + 1 + Columns.Count) % Columns.Count) {
             if (Rows[Cursor.Row].Items[i] != null) {
                 Cursor.Column = i;
                 return;

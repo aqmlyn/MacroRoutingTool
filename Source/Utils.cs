@@ -7,6 +7,18 @@ using System.Reflection;
 namespace Celeste.Mod.MacroRoutingTool;
 
 public static class Utils {
+    public static void Order<TComp, TAssoc>(TComp compA, TComp compB, TAssoc assocA, TAssoc assocB, out TAssoc assocEarlier, out TAssoc assocLater) where TComp : IComparable {
+        if (compA.CompareTo(compB) < 0) {
+            assocEarlier = assocA;
+            assocLater = assocB;
+        } else {
+            assocEarlier = assocB;
+            assocLater = assocA;
+        }
+    }
+
+    public static void Order<T>(T compA, T compB, out T assocEarlier, out T assocLater) where T : IComparable => Order(compA, compB, compA, compB, out assocEarlier, out assocLater);
+
     public static int BoolToInt(bool val) => val ? 1 : 0;
 
     /// <summary>

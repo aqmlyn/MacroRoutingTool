@@ -115,9 +115,14 @@ public class MRTSettings : EverestModuleSettings {
         table.ColumnFormats.Add(new() { Justify = 1f, MarginBefore = 20f });
 
         var directoryRow = table.AddRow();
+
         var directoryLabel = new TableMenu.Label();
         directoryLabel.Element.Text = MRTDialog.PathSetting;
         directoryRow.Add(directoryLabel);
+
+        var directoryEntry = new TableMenu.TextEntry();
+        directoryEntry.PlaceholderElement.Text = "placeholder text";
+        directoryRow.Add(directoryEntry);
 
         var testButtonRow = table.AddRow();
 

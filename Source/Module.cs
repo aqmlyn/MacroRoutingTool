@@ -53,9 +53,11 @@ public class MRT : EverestModule {
     }
 
     public static string LogTag(params string[] subtags) => string.Join("/", "MacroroutingTool", subtags);
-    public class LogTags {
-        public const string Debug = "Debug";
-        public const string Utils = "Utils";
+    public static class LogTags {
+        public static string Debug => LogTag(nameof(Debug));
+        public static string Utils => LogTag(nameof(Debug));
+        public static string UI => LogTag(nameof(UI));
+        public static string TextEntry => LogTag(nameof(TextEntry));
     }
 
     public static void ConsoleMessage(object msg, Color? color = null) {
